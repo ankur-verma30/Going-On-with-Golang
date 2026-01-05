@@ -2,9 +2,9 @@
 🔷 Introduction to Golang
 ###########################
 Go (also called Golang) is:
-    ✔️ A statically typed
-    ✔️ compiled
-    ✔️ concurrent
+    ✔️️ A statically typed
+    ✔️️ compiled
+    ✔️️ concurrent
     ✔️ garbage-collected
 programming language.
 
@@ -24,7 +24,7 @@ systems with simple code
 
 
 ❓ Why Go Was Create
-Google engineers face➤ d problems with:
+Google engineers faced problems with:
 ➤ Slow compile times in C++ ❌
 ➤ Complex syntax and abstractions ❌
 ➤ Poor concurrency support ❌
@@ -69,7 +69,7 @@ Advantages
     ✔️ No runtime dependency
     ✔️ Easy deployment
 
-Example:
+✅ Example:
 go build main.go
 ./main
 
@@ -123,7 +123,7 @@ No
     ✔️ Generics (added later, minimal) ❌
     ✔️ Exceptions ❌
 
-Example:
+✅ Example:
 if err != nil {
     return err
 }
@@ -188,7 +188,7 @@ Includes:
     ✔️ Concurrency utilities
     ✔️ File I/O
     ✔️ Testing
-Example:
+✅ Example:
 http.ListenAndServe(":8080", nil)
 No framework required.
 
@@ -270,3 +270,417 @@ Choose Go if you want to build:
 
 🎯 Final Mental Model
 Go is a language for engineers who value clarity, performance, and scalability over cleverness.
+
+
+############################
+🌊 First Program of Golang
+############################
+✅ Example: First Program
+package main
+
+import "fmt"
+
+func main(){
+	fmt.Println("Hello World!")
+}
+
+
+🔁 package main
+A package is:
+    ✔️ A unit of code organization
+    ✔️ A namespace
+    ✔️ A compilation boundary
+Every .go file must belong to exactly one package.
+
+
+❓ Why package main?
+➤ main is special in Go.
+➤ If a program has:
+    ✔️ package main
+    ✔️ func main()
+➡️ Go treats it as an executable program, not a library.
+❌ Without package main, Go produces a library, not a runnable binary.
+👉 Rule:Only one main package per executable.
+
+
+🔁 import "fmt"
+fmt = format
+Part of Go’s standard library
+
+Used for:
+    ✔️ Printing
+    ✔️ Formatting strings
+    ✔️ Input/output
+
+❓ Why Quotes "fmt"?
+Go imports packages by path
+
+"fmt" means:
+    ✔️ Look inside Go’s standard library
+    ✔️ Find the fmt package
+
+
+🔷 Import System Design
+➤ No wildcard imports
+➤ No unused imports allowed ❌
+
+import "fmt" // ✅ used
+import "math" // ❌ compile-time error if unused
+➡️ Forces clean code
+
+
+🔁 func main()
+func keyword defines a function
+
+Syntax:
+func functionName(parameters) returnType {
+}
+
+❓ Why is main() Special?
+➤ Entry point of Go program
+➤ Execution always starts from main()
+➤ Cannot:
+    ✔️ Take arguments
+    ✔️ Return values
+❌ This is invalid: func main() int { }
+👉 Execution Flow: OS → Go Runtime → main()
+
+
+🔁 Curly Braces { }
+➤ Curly braces {} for blocks
+➤ No indentation-based blocks like Python
+
+⚠️ Brace Placement Rule
+func main() { // ✅ same line
+
+❌ This fails:
+func main()
+{ // ❌ syntax error
+
+👉 Reason:
+    ✔️ Go uses automatic semicolon insertion
+    ✔️ Newline ends the statement
+
+
+🔁 fmt.Println("Hello World!")
+| Part             | Meaning      |
+| ---------------- | ------------ |
+| fmt              | Package name |
+| Println          | Function     |
+| ("Hello World!") | Argument     |
+
+
+🔷 Println
+Prints:
+    ✔️ Value
+    ✔️ Followed by newline (\n)
+fmt.Print("Hi")    // no newline
+fmt.Println("Hi") // newline
+
+
+🔷 Internal Working
+✔️ String literal "Hello World!"
+✔️ Passed to Println
+✔️ Formatted
+✔️ Written to stdout
+✔️ Flushed to terminal
+
+
+🔁 String Literals in Go
+"Hello World!"
+✔️ Immutable
+✔️ UTF-8 encoded
+✔️ Stored in read-only memory
+
+
+🔁 Semicolons (Hidden Feature)
+You did not write semicolons, but Go inserts them automatically.
+✅ Example:
+fmt.Println("Hello")
+Becomes internally: fmt.Println("Hello");
+
+
+🔁 Program Execution (Step-by-Step)
+🔗 Compile: go build main.go
+🔗 Run:./main
+
+
+🔁 Execution Flow
+1️⃣ OS loads binary
+2️⃣ Go runtime initializes
+3️⃣ Garbage Collector setup
+4️⃣ Goroutine scheduler starts
+5️⃣ main() goroutine runs
+6️⃣ Println executes
+7️⃣ Program exits
+
+
+🔁 Why No #include Like C?
+Go uses:
+    ✔️ Packages
+    ✔️ Modules
+    ✔️ Explicit imports
+➡️ Faster compilation
+➡️ No header files
+➡️ No cyclic dependencies
+
+
+🔁 Minimalism Philosophy in This Program
+This tiny program shows Go’s core philosophy:
+| Concept          | Shown Here     |
+| ---------------- | -------------- |
+| Simplicity       | Minimal syntax |
+| Explicitness     | Clear imports  |
+| Fast startup     | Native binary  |
+| Standard library | fmt            |
+
+
+🔁 Common Beginner Mistakes 🚫
+| Mistake            | Error                    |
+| ------------------ | ------------------------ |
+| Wrong package name | `main package not found` |
+| Unused import      | compile error            |
+| Braces on new line | syntax error             |
+| Typo in main       | program won’t run        |
+
+
+🔁 Equivalent in Other Languages (Mental Model)
+| Language | Complexity           |
+| -------- | -------------------- |
+| C        | headers + main       |
+| Java     | class + main         |
+| Python   | interpreter          |
+| Go       | minimal but compiled |
+
+
+###############################
+🌊Go Program Structure & Files
+###############################
+A minimal Go program always follows this order:
+✅ Example:
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("Hello, Go!")
+}
+
+➤ Mandatory Order (Strict)
+1️⃣ package declaration
+2️⃣ import statements
+3️⃣ Code (functions, variables, types)
+👉 Go is very strict about structure.
+
+
+🔁 Package Declaration
+package main
+🔷 Rules
+➤ Must be first non-comment line
+➤ Every file belongs to exactly one package
+➤ Files in same folder → same package
+
+❌ Invalid:
+➤ package main
+➤ package utils
+
+🔷 Package Naming Conventions
+➤ Lowercase
+➤ Short & meaningful
+➤ No underscores
+
+✅ Examples:
+package auth
+package service
+package controller
+
+
+🔁 Imports Section
+➤ Single Import: import "fmt"
+➤ Multiple Imports (Preferred)
+import (
+	"fmt"
+	"math"
+)
+
+
+🔷 Import Rules
+➤ No unused imports ❌
+➤ Imports resolved at compile time
+➤ Circular imports ❌
+
+🔷 Import Types
+1️⃣ Standard Library
+import "fmt"
+
+2️⃣ External Packages
+import "github.com/gin-gonic/gin"
+
+3️⃣ Internal Packages
+import "myapp/utils"
+
+
+🔁 The main Function
+func main() {
+}
+
+👉 Rules
+➤ Must be in package main
+➤ No parameters
+➤ No return value
+➤ Exactly one main() per executable
+
+
+🔁 Files & Folder Structure
+📁 Simple Project
+hello/
+├── main.go
+
+📁 Small Application
+myapp/
+├── main.go
+├── utils.go
+Both files: package main
+➡️ Compiled together.
+
+
+📁 Professional Go Project Structure
+myapp/
+├── cmd/
+│   └── server/
+│       └── main.go
+├── internal/
+│   ├── auth/
+│   │   └── auth.go
+│   └── user/
+│       └── user.go
+├── pkg/
+│   └── logger/
+│       └── logger.go
+├── go.mod
+└── go.sum
+
+
+🔷 Meaning of Each Folder
+| Folder      | Purpose                  |
+| ----------- | ------------------------ |
+| `cmd/`      | Entry points             |
+| `internal/` | Private packages         |
+| `pkg/`      | Public reusable packages |
+| `go.mod`    | Module definition        |
+| `go.sum`    | Dependency checksums     |
+
+
+🔁 Multiple Files in Same Package
+✅ Example:
+🔗 main.go
+package main
+
+func main() {
+	sayHello()
+}
+
+
+🔗 helper.go
+package main
+
+func sayHello() {
+	fmt.Println("Hello")
+}
+✔️ No import needed
+✔️ Compiled as one unit
+
+
+🔁 Go Modules (go.mod)
+➤ A collection of related packages
+➤ Versioned
+➤ Dependency-managed
+
+🔗 Create module: go mod init myapp
+
+✅ Example: go.mod
+module myapp
+go 1.22
+require github.com/gin-gonic/gin v1.9.1
+
+
+🔁 File Naming Rules
+✅ Valid:
+    ✔️ main.go
+    ✔️ user_service.go
+    ✔️ auth.go
+
+❌ Invalid:
+    ✔️ Main.go (case-sensitive issues)
+    ✔️ user-service.go (hyphen ❌)
+
+
+🔁 Code Organization Inside a File
+package main
+
+import (
+	"fmt"
+)
+
+const PI = 3.14
+
+var appName = "GoApp"
+
+type User struct {
+	Name string
+}
+
+func main() {
+}
+
+
+🔁 Visibility Rules (Public vs Private)
+Capital Letter Rule
+| Name      | Visibility |
+| --------- | ---------- |
+| `Println` | Public     |
+| `println` | Private    |
+✅ Example:
+func DoSomething() {} // exported
+func doSomething() {} // unexported
+
+
+🔁 Build Tags (Advanced)
+//go:build linux
+
+Used for:
+OS-specific files
+Architecture-specific builds
+
+
+🔁 Entry Points & Multiple Executables
+cmd/
+├── api/
+│   └── main.go
+├── worker/
+│   └── main.go
+Each folder: package main
+
+
+🔁 How Go Compiles Files
+go build
+
+➤ Scans module
+➤ Compiles all .go files
+➤ Excludes:
+    ✔️ _test.go
+➤ Files with incompatible build tags
+
+
+🔁 Common Mistakes 🚫
+| Mistake                           | Result        |
+| --------------------------------- | ------------- |
+| Different packages in same folder | Compile error |
+| Unused import                     | Compile error |
+| Multiple main()                   | Compile error |
+| Circular import                   | Compile error |
+
+
+###############################
+🌊 Primitive Data Types in Go
+###############################
