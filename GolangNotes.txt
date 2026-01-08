@@ -684,3 +684,177 @@ go build
 ###############################
 🌊 Primitive Data Types in Go
 ###############################
+➤ Built-in types provided by Go
+➤ Represent single, simple values
+➤ Stored by value
+➤ Fast, memory-efficient
+
+
+Go primitive types fall into 5 major categories.
+1️⃣ Integer Types
+Go provides explicit-sized integers to avoid ambiguity.
+
+🔄 Signed Integers
+| Type  | Size           | Range         |
+| ----- | -------------- | ------------- |
+| int8  | 8-bit          | -128 to 127   |
+| int16 | 16-bit         | -32K to 32K   |
+| int32 | 32-bit         | -2³¹ to 2³¹-1 |
+| int64 | 64-bit         | -2⁶³ to 2⁶³-1 |
+| int   | Arch dependent | 32 or 64-bit  |
+
+🔄 Unsigned Integers
+| Type   | Size           | Range        |
+| ------ | -------------- | ------------ |
+| uint8  | 8-bit          | 0 to 255     |
+| uint16 | 16-bit         | 0 to 65K     |
+| uint32 | 32-bit         | 0 to 2³²-1   |
+| uint64 | 64-bit         | 0 to 2⁶⁴-1   |
+| uint   | Arch dependent | 32 or 64-bit |
+
+👉 Special Aliases
+byte = uint8
+rune = int32
+➤ byte ─────────▶ raw data
+➤ rune─────────▶ Unicode character
+
+👉 Aliases
+x := 10 // type is int
+
+🚫 Traps
+➤ int size varies by architecture
+➤ Mixing int and int64 ❌ (explicit cast required)
+➤ Unsigned underflow can cause bugs
+
+
+2️⃣ Floating-Point Types
+Used for decimal numbers.
+
+🔄 Float Types
+| Type    | Size   | Precision  |
+| ------- | ------ | ---------- |
+| float32 | 32-bit | ~7 digits  |
+| float64 | 64-bit | ~15 digits |
+
+🔄 Default Float Type 
+f := 3.14 // float64
+
+🔄 Floating Precision Problem
+0.1 + 0.2 != 0.3 // true
+Reason: Binary floating-point representation
+
+🔄 Best Practice
+➤ Use float64 for most cases
+➤ Avoid float for money (use integers)
+
+
+3️⃣ Boolean Type
+var isActive bool = true
+
+🔄 Properties
+➤ Only true or false
+➤ No truthy/falsy values
+➤ Cannot convert int → bool
+
+❌ Invalid: if 1 {} // int is not bool
+
+
+4️⃣ Character Type (Rune)
+Go does not have char.
+
+🔄 Rune
+var ch rune ='A'
+
+➤ Alias for int32
+➤ Stores Unicode code point
+➤ Uses single quotes
+
+🔄 Unicode Support 
+var smile rune = '😀'
+Go is Unicode-first language
+
+
+5️⃣ String Type
+➤ Immutable sequence of bytes
+➤ UTF-8 encoded
+➤ Stored as:
+    ✔️ Pointer
+    ✔️ Length
+
+
+🔄 String Declaration
+s := "Hello World"
+
+🔄 String vs Rune vs byte
+s := "Go😊"
+len(s) // bytes, not characters
+
+🔄 Immutable Nature
+s[0] = 'X' ─────────▶ ❌ compile error
+
+🔄 String Literals
+1️⃣ Interpreted String
+s := "Hello\nWorld"
+
+2️⃣ Raw String
+s := `Hello
+World`
+
+6️⃣ Complex Numbers (Rare but Built-In)
+c := complex(3, 4)
+| Type       | Description         |
+| ---------- | ------------------- |
+| complex64  | float32 real + imag |
+| complex128 | float64 real + imag |
+
+🔄 Use Case
+➤ Scientific computing
+➤ Signal processing
+
+
+🔁 Zero Values
+Go automatically initializes variables.
+| Type   | Zero Value |
+| ------ | ---------- |
+| int    | 0          |
+| float  | 0.0        |
+| bool   | false      |
+| string | ""         |
+| rune   | 0          |
+
+✅ Example
+var x int
+fmt.Println(x) // 0
+
+
+🔁 Type Conversion (No Implicit Casting)
+Go is strict.
+
+❌ Invalid:
+var a int = 10
+var b int64 = a
+
+✔️ Valid: var b int64 = int64(a)
+
+
+🔁 Memory Representation 
+✔️ Primitives stored directly
+✔️ Passed by value
+✔️ Copy occurs on assignment
+
+
+✅ Example
+a := 10
+b := a
+b = 20
+─────────▶ a remains 10.
+
+
+🔁 Best Practices
+➤ Use int for general integers
+➤ Use float64 for decimals
+➤ Use rune for characters
+➤ Avoid uint unless needed
+➤ Use raw strings for regex, JSON
+
+
