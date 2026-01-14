@@ -815,6 +815,13 @@ s := "Hello\nWorld"
 s := `Hello
 World`
 
+
+🔄 Types of strings
+➤ A one line string can be created using "". To add line breaks you would need to add "\n" escape character for new line.
+➤ A multi-line string can be created using backticks ``. It preserves the formatting including line breaks and spaces.
+➤ Strings can be Formatted with string formatters.
+
+
 6️⃣ Complex Numbers (Rare but Built-In)
 c := complex(3, 4)
 | Type       | Description         |
