@@ -690,7 +690,7 @@ go build
 ➤ Fast, memory-efficient
 
 
-Go primitive types fall into 5 major categories.
+👉 Go primitive types fall into 5 major categories.
 1️⃣ Integer Types
 Go provides explicit-sized integers to avoid ambiguity.
 
@@ -698,10 +698,11 @@ Go provides explicit-sized integers to avoid ambiguity.
 | Type  | Size           | Range         |
 | ----- | -------------- | ------------- |
 | int8  | 8-bit          | -128 to 127   |
-| int16 | 16-bit         | -32K to 32K   |
+| int16 | 16-bit         | -32768 to 32767   |
 | int32 | 32-bit         | -2³¹ to 2³¹-1 |
 | int64 | 64-bit         | -2⁶³ to 2⁶³-1 |
 | int   | Arch dependent | 32 or 64-bit  |
+
 
 🔄 Unsigned Integers
 | Type   | Size           | Range        |
@@ -716,7 +717,13 @@ Go provides explicit-sized integers to avoid ambiguity.
 byte = uint8
 rune = int32
 ➤ byte ─────────▶ raw data
-➤ rune─────────▶ Unicode character
+➤ rune ─────────▶ Unicode character
+✅ Example:
+var myByte byte='A' // ─────────▶ byte is an alias for uint8
+fmt.Println("Value of myByte is",myByte)
+
+var myRune rune='😁' // ─────────▶ rune is an alias for int32 for unicode characters
+fmt.Println("Value of myRune is",myRune)
 
 👉 Aliases
 x := 10 // type is int
@@ -727,17 +734,25 @@ x := 10 // type is int
 ➤ Unsigned underflow can cause bugs
 
 
+🔄 Type Casting
+➤ TypeCasting rule types case the right side value into the left side value type
+➤ Type casting can only be possible between compatible data types
+
+➤ Syntax:
+<variable_name>=<target_data_type>(<value_to_be_converted>)
+✅ Example:
+var a int8 = 100
+var b int16 = int16(a)
+
+
 2️⃣ Floating-Point Types
 Used for decimal numbers.
 
 🔄 Float Types
-| Type    | Size   | Precision  |
-| ------- | ------ | ---------- |
-| float32 | 32-bit | ~7 digits  |
-| float64 | 64-bit | ~15 digits |
-
-🔄 Default Float Type 
-f := 3.14 // float64
+| Type             | Size   | Precision  |
+| -------          | ------ | ---------- |
+| float32          | 32-bit | ~7 digits  |
+| float64(default) | 64-bit | ~15 digits |
 
 🔄 Floating Precision Problem
 0.1 + 0.2 != 0.3 // true
