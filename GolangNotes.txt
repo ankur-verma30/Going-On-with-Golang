@@ -880,3 +880,173 @@ b = 20
 ➤ Use raw strings for regex, JSON
 
 
+==============
+🔷 Variables
+==============
+🔄 Variable
+➤ A named memory location
+➤ Stores a value of a specific type
+➤ Go is statically typed
+
+
+🔄 Ways to Declare Variables
+1️⃣ var Declaration (Explicit)
+var a int
+a = 10
+
+🔗 With Initialization
+var b int = 20
+
+🔗 Type Inference(Implicit)
+var c = 30 // int
+
+🔗 Multiple Variables + Implicit
+var x, y = 1, 2
+
+🔗 Grouped Declaration
+Used to group similar type of variables
+var (
+	name string = "Go"
+	age  int    = 15
+)
+
+
+2️⃣ Short Variable Declaration :=
+➤ The keyword var can be omitted along with the type which is inferred from the value on right in variable declaration.
+➤ Can be used to declare multiple variables as long as one variable on the left is new.
+d := 40
+
+👉 Rules
+➤ Only inside functions
+➤ At least one new variable must be declared
+➤ Compiler infers type
+
+❌ Invalid: x := 10 // at package level
+
+🔗 Mixed Assignment (Trap ⚠️)
+a := 10
+a, b := 20, 30 // ❌ a is not new variable
+✔️ Correct: a, b := 10, 20
+
+
+🔄 Variable Scope
+1️⃣ Local Variables
+➤ Declared inside functions
+➤ Accessible only within block
+
+2️⃣ Package-Level Variables
+var appName = "GoApp"
+
+➤ Shared across files in same package
+➤ Initialized before main()
+
+
+3️⃣ Block Scope
+if x := 10; x > 5 {
+	fmt.Println(x)
+}
+👉 x exists only inside if block
+
+
+🔄 Shadowing (Common Bug)
+x := 10
+if true {
+	x := 20 // shadows outer x
+}
+👉 Outer x remains 10.
+
+
+====================
+🔷 Constants in Go
+====================
+🔄 Constant
+➤ Value known at compile time
+➤ Immutable
+➤ No memory allocation at runtime
+
+🔗 Declaring Constants
+const pi = 3.14
+
+🔗 Typed Constant
+const age int = 25
+
+🔗 Untyped Constant (Powerful)
+const x = 10
+
+🔗 Why Untyped Constants Matter
+const x = 10
+var y int64 = x // allowed
+
+🔗 Multiple Constants
+const (
+	A = 1
+	B = 2
+	C = 3
+)
+
+🔗 iota – Constant Generator 🔥
+const (
+	A = iota // 0
+	B        // 1
+	C        // 2
+)
+
+
+✅ Practical Example
+const (
+	_ = iota
+	Monday
+	Tuesday
+	Wednesday
+)
+
+✅ iota with Expressions
+const (
+	KB = 1 << (10 * iota)
+	MB
+	GB
+)
+
+
+🔄 Constant Rules (Strict)
+❌ Invalid: const x = getValue() // function call
+✔️ Valid: const x = 10 + 20
+
+
+🔄 What Types Can Be Constants?
+✅ Allowed:
+➤ Numbers
+➤ Strings
+➤ Booleans
+
+🚫 Not allowed:
+➤ Slices
+➤ Maps
+➤ Structs
+
+
+🔄 Variables Vs Constants
+| Feature       | Variable  | Constant  |
+| ------------- | --------- | --------- |
+| Mutability    | Mutable   | Immutable |
+| Compile-time  | ❌        | ✔️       |
+| Memory        | Allocated | None      |
+| Function call | ✔️       | ❌        |
+| iota          | ❌       | ✔️        |
+
+
+🔄 Initialization Order
+1️⃣ Package-level variables
+2️⃣ init() function
+3️⃣ main()
+func init() {
+	fmt.Println("Init runs first")
+}
+
+
+🔄 Best Practices
+➤ Use := for local variables
+➤ Use var for package-level variables
+➤ Use const wherever possible
+➤ Avoid shadowing
+➤ Group related declarations
