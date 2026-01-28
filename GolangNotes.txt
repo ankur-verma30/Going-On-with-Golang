@@ -962,15 +962,24 @@ if true {
 🔄 Constant
 ➤ Value known at compile time
 ➤ Immutable
-➤ No memory allocation at runtime
+➤ No memory allocation at runtime and cannot make a runtime value constant
+➤ In Go constants can only hold values that the compiler can infer to be constant at the compile time.
+
+
+🔄 Constant values
+1️⃣ Boolean values i.e. true or false
+2️⃣ Numeric values for example 1, 2, 3,110.01, etc.
+3️⃣ Global functions like complex, real, imag, len and cap
+4️⃣ Strings and rune values for example "Hello",'a' etc.
+5️⃣ Expressions that can be evaluated at compile time for example 1<2.
 
 🔗 Declaring Constants
 const pi = 3.14
 
-🔗 Typed Constant
+🔗 Typed Constant ─────────▶ can only be assigned to directly to a variable of the same kind
 const age int = 25
 
-🔗 Untyped Constant (Powerful)
+🔗 Untyped Constant (Powerful) ─────────▶ Type can be inferred or it fallbacks to default type for the constant value.
 const x = 10
 
 🔗 Why Untyped Constants Matter
@@ -1025,7 +1034,13 @@ const (
 ➤ Structs
 
 
-🔄 Variables Vs Constants
+🔄 Similarities between variables and constants
+1️⃣ package-level and function-level
+2️⃣ Can be grouped using braces ().
+3️⃣ Can be initialized using :=
+
+
+🔄 Differences between variables and constants
 | Feature       | Variable  | Constant  |
 | ------------- | --------- | --------- |
 | Mutability    | Mutable   | Immutable |

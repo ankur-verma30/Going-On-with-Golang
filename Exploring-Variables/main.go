@@ -32,6 +32,9 @@ func main(){
 	// Atmost one new variable shoule be declared on the left side for redeclaration of pre-existing variables
 	c,a:=10,20
 	fmt.Println("These are shorthand variables with one new variables and other pre-existing variables ",c,a)
+
+
+	//
 }
 
 func doSomething(){
