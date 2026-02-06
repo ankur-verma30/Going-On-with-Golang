@@ -1,0 +1,94 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"math/rand"
+	"net/http"
+	"strconv"
+
+	"github.com/gorilla/mux"
+	"golang.org/x/tools/go/analysis/passes/appends"
+)
+
+// struct is like an object in golang and have a key value pair with type of data
+type Movie struct {
+	ID       string    `json:"id"`
+	Isbn     string    `json:"isbn"`
+	Title    string    `json:"title"`
+	Director *Director `json:"director"`
+}
+
+type Director struct {
+	Firstname string `json:"firstname"`
+	Lastname  string `json:"lastname"`
+}
+
+var movies []Movie
+
+func getMovies(w http.ResponseWriter, r *http.Request){
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(movies)
+
+	}
+
+	func deleteMovies(w http.ResponseWriter, r *http.Request){
+		w.Header().Set("Content-Type","application/json")
+		params := mux.Vars(r)
+
+
+		for index, item := range movies{
+			if item.ID == params["id"]{
+				movies= append(movies[:index], movies[index+1:]...)
+				 //append the slice from the index to the end
+				 break
+			}
+		}
+		json.NewEncoder(w).Encode(movies)
+	}
+
+	func getMovie(w http.ResponseWriter, r *http.Request){
+		w.Header().Set("Content-Type","application/json")
+		params := mux.Vars(r)
+
+		for _, item := range movies{
+			if item.ID == params["id"]{
+				json.NewEncoder(w).Encode(item)
+				return
+			}
+		}
+	}
+
+func main() {
+	r := mux.NewRouter()
+
+	movies = append(movies, Movie{
+		ID:    "1",
+		Isbn:  "1234",
+		Title: "3 Idiots",
+		Director: &Director{
+			Firstname: "Rajkummar",
+			Lastname:  "Hirani",
+		},
+	})
+
+	movies = append(movies, Movie{
+		ID:    "2",
+		Isbn:  "5678",
+		Title: "Bahubali",
+		Director: &Director{
+			Firstname: "S.S. ",
+			Lastname:  "Rajamouli",
+		},
+	})	
+
+	r.HandleFunc("/movies", getMovies).Methods("GET")
+	r.HandleFunc("/movies/{id}", getMovie).Methods("GET")
+	r.HandleFunc("/movies", createMovies).Methods("POST")
+	r.HandleFunc("/movies/{id}", updateMovie).Methods("PUT")
+	r.HandleFunc("/movies/{id}", deleteMovies).Methods("DELETE")
+
+	fmt.Printf("Starting server at port 8000\n")
+	log.Fatal(http.ListenAndServe(":8000", r))
+}

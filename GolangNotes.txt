@@ -1065,3 +1065,197 @@ func init() {
 ➤ Use const wherever possible
 ➤ Avoid shadowing
 ➤ Group related declarations
+
+
+==============
+🔷 Keywords
+===============
+🔄 Keywords
+➤ Keywords are reserved words
+➤ They have special meaning in the Go language
+➤ You cannot use them as variable names, function names, package names, etc.
+✅ Example ❌: var func = 10 // invalid
+
+
+🔄 List of Go Keywords (25)
+Go has only 25 keywords (small on purpose).
+
+1️⃣ Control Flow
+if, else, switch, case, default, for, break, continue, goto, fallthrough, return
+
+2️⃣ Declarations / Definitions
+var, const, type, func, package, import
+
+3️⃣ Concurrency
+go, select, chan, defer
+
+4️⃣ Structuring / Composition
+struct, interface, map
+
+5️⃣ Special
+range
+👉 Notice: Go intentionally has few keywords, so code stays simple and readable.
+
+
+🔄 Keywords vs Predeclared Identifiers
+Many people confuse these.
+
+1️⃣ Keywords (Reserved)
+✅ Example: func, var, for
+
+2️⃣ Predeclared Identifiers (NOT keywords)
+These are built-in names that you can override (but you shouldn’t):
+
+✅ Examples:
+int, string, bool
+true, false
+nil
+make, new, len, cap, append, copy, close
+print, println
+
+
+✅ Example (allowed but bad practice):
+func main() {
+	len := 100
+	fmt.Println(len) // prints 100
+}
+🚫 This shadows built-in len() function → confusing.
+
+
+================
+🔷 Identifiers
+================
+An identifier is the name you give to: variables, constants, functions, types (structs, interfaces), packages, fields/methods, labels
+
+✅ Examples:
+var age int
+const Pi = 3.14
+func calculateSum() {}
+type User struct {}
+👉 Here: age, Pi, calculateSum, User are identifiers
+
+
+🔄 Rules for Valid Identifiers
+Rule 1️⃣: Must start with a letter or _
+Valid: name, _age, User1
+Invalid ❌: 1user, @name
+
+
+Rule 2️⃣: Can contain letters, digits, underscore
+Valid:
+✔️ user_name_1
+✔️ totalSum2
+
+✅ Rule 3️⃣: Case-sensitive
+var name = "A"
+var Name = "B"
+➤ name and Name are different identifiers.
+
+
+✅ Rule 4️⃣: Cannot be a keyword
+❌ Invalid: var for = 10
+
+
+4️⃣ Exported vs Unexported Identifiers
+Go uses a simple rule:
+🔥 Capital Letter = Exported (Public)
+
+Accessible from other packages.
+type User struct {
+	Name string // exported field
+}
+
+🔒 Small Letter = Unexported (Private)
+Accessible only within same package.
+
+type user struct {
+	name string // unexported field
+}
+
+
+✅ Example (Package Boundary)
+mathutils/sum.go
+package mathutils
+
+func Add(a, b int) int { // exported
+	return a + b
+}
+
+func subtract(a, b int) int { // unexported
+	return a - b
+}
+
+
+🔗 main.go
+package main
+import (
+	"fmt"
+	"myapp/mathutils"
+)
+
+func main() {
+	fmt.Println(mathutils.Add(2, 3)) // ✅ works
+	// mathutils.subtract(5, 2)      // ❌ not accessible
+}
+
+5️⃣ Naming Conventions (Go Style)
+Go has strong naming culture.
+
+✅ Variables
+1️⃣ short but meaningful
+2️⃣use camelCase
+userName := "Ankur"
+totalMarks := 95
+
+✅ Functions
+func calculateTotal() {}
+func fetchUserByID() {}
+
+✅ Types (Struct / Interface)
+PascalCase (exported)
+nouns
+
+type UserService struct {}
+type PaymentGateway interface {}
+
+
+✅ Interfaces (Go Convention)
+Many interfaces end with er
+
+type Reader interface {
+	Read([]byte) (int, error)
+}
+type Writer interface {
+	Write([]byte) (int, error)
+}
+
+
+❌ Avoid these
+snake_case (not idiomatic)
+Hungarian notation
+overly long names
+
+6️⃣ Blank Identifier _ (Special Identifier)
+➤ Go has a special identifier: _
+➤ Meaning: "I don’t care about this value”
+➤ Used to ignore values or avoid unused-variable errors
+✅ Example: x, _ := fmt.Println("Hello")
+
+
+7️⃣ Common Questions / Traps
+✅ Q1: Is int a keyword?
+❌ No. int is a predeclared identifier, not a keyword.
+
+
+✅ Q2: Can we name a variable nil?
+❌ No, nil is a predeclared identifier and should not be shadowed.
+
+
+✅ Q3: What decides public/private in Go?
+➡️ First letter case
+Name → public/exported
+name → private/unexported
+
+
+✅ Q4: What is _ used for?
+➡️ Ignore values + avoid unused warnings.
