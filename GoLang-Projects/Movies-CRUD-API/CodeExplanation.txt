@@ -1,0 +1,975 @@
+===============================================================================
+LINE-BY-LINE EXPLANATION: GO CRUD REST API WITH GORILLA MUX
+===============================================================================
+
+This is a simple RESTful API built in Go that manages a collection of movies.
+It demonstrates CRUD operations (Create, Read, Update, Delete) using HTTP.
+
+===============================================================================
+SECTION 1: PACKAGE DECLARATION
+===============================================================================
+
+Line 1:
+package main
+
+EXPLANATION:
+- Declares this file belongs to the 'main' package
+- 'main' is a special package in Go
+- Executables must have package main
+- Only package main can have a main() function that serves as entry point
+- Without package main, Go would compile this as a library, not an executable
+
+
+===============================================================================
+SECTION 2: IMPORT STATEMENTS
+===============================================================================
+
+Lines 3-11:
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/gorilla/mux"
+	"log"
+	"math/rand"
+	"net/http"
+	"strconv"
+)
+
+EXPLANATION OF EACH IMPORT:
+
+Line 4: "encoding/json"
+- Standard library package for JSON encoding and decoding
+- Used to convert Go structs to JSON (encoding) and JSON to Go structs (decoding)
+- Essential for REST APIs that communicate using JSON format
+
+Line 5: "fmt"
+- Standard library package for formatted I/O
+- Stands for "format"
+- Used for printing to console (fmt.Printf, fmt.Println)
+- In this code: used to print "Starting server at port 8000"
+
+Line 6: "github.com/gorilla/mux"
+- Third-party package (external dependency)
+- "mux" stands for HTTP request multiplexer (router)
+- More powerful than Go's standard net/http router
+- Provides easy URL parameter extraction (like /movies/{id})
+- Supports method-based routing (GET, POST, PUT, DELETE)
+- Must be installed: go get github.com/gorilla/mux
+
+Line 7: "log"
+- Standard library package for logging
+- Used to log errors and fatal events
+- In this code: used with log.Fatal() to log server startup errors
+
+Line 8: "math/rand"
+- Standard library package for generating random numbers
+- Used to create random movie IDs when creating new movies
+- Note: This is NOT cryptographically secure (for demo purposes only)
+
+Line 9: "net/http"
+- Standard library package for HTTP client and server
+- Provides types like http.ResponseWriter, http.Request
+- Provides http.ListenAndServe() to start the server
+- Foundation of web servers in Go
+
+Line 10: "strconv"
+- Standard library package for string conversions
+- Stands for "string conversions"
+- Used to convert integers to strings and vice versa
+- In this code: used to convert random int to string for movie ID
+
+
+===============================================================================
+SECTION 3: DATA STRUCTURES (TYPE DEFINITIONS)
+===============================================================================
+
+Lines 13-18:
+// struct is like an object in golang and have a key value pair with type of data
+type Movie struct {
+	ID       string    `json:"id"`
+	Isbn     string    `json:"isbn"`
+	Title    string    `json:"title"`
+	Director *Director `json:"director"`
+}
+
+EXPLANATION:
+
+Line 13: Comment explaining what a struct is
+
+Line 14: type Movie struct {
+- 'type' keyword declares a new type
+- 'Movie' is the name of the new type (capitalized = exported/public)
+- 'struct' means this is a structure type (composite type with fields)
+- Structs in Go are similar to classes in OOP but without methods in the definition
+
+Line 15: ID string `json:"id"`
+- Declares a field named 'ID' of type 'string'
+- 'ID' is capitalized, so it's exported (accessible outside this package)
+- `json:"id"` is a STRUCT TAG
+  * Tells the JSON encoder/decoder to use "id" as the JSON key name
+  * When encoding to JSON: ID field becomes "id" in JSON
+  * When decoding from JSON: "id" key maps to ID field
+  * Without this tag, it would use "ID" in JSON (capital I)
+
+Line 16: Isbn string `json:"isbn"`
+- Field to store the ISBN number of the movie
+- Type: string
+- JSON key: "isbn"
+
+Line 17: Title string `json:"title"`
+- Field to store the movie title
+- Type: string
+- JSON key: "title"
+
+Line 18: Director *Director `json:"director"`
+- Field to store director information
+- Type: *Director (POINTER to Director struct)
+- The asterisk (*) means this is a pointer, not a direct value
+- WHY POINTER?
+  * Can be nil (no director)
+  * Avoids copying the entire Director struct
+  * Multiple movies can point to the same Director (memory efficiency)
+- JSON key: "director"
+
+
+Lines 20-23:
+type Director struct {
+	Firstname string `json:"firstname"`
+	Lastname  string `json:"lastname"`
+}
+
+EXPLANATION:
+
+Line 20: type Director struct {
+- Defines another struct type called Director
+- Used to represent a movie director
+
+Line 21: Firstname string `json:"firstname"`
+- Director's first name
+- Type: string
+- JSON key: "firstname"
+
+Line 22: Lastname string `json:"lastname"`
+- Director's last name
+- Type: string
+- JSON key: "lastname"
+
+EXAMPLE JSON OUTPUT:
+{
+  "id": "1",
+  "isbn": "1234",
+  "title": "3 Idiots",
+  "director": {
+    "firstname": "Rajkumar",
+    "lastname": "Hirani"
+  }
+}
+
+
+===============================================================================
+SECTION 4: GLOBAL VARIABLE
+===============================================================================
+
+Line 25:
+var movies []Movie
+
+EXPLANATION:
+- 'var' keyword declares a variable
+- 'movies' is the variable name (lowercase = unexported/package-private)
+- '[]Movie' is the type: a SLICE of Movie structs
+  * Slice = dynamic array in Go
+  * Can grow and shrink
+  * Initially nil (empty)
+- This is a PACKAGE-LEVEL variable (declared outside any function)
+  * Accessible by all functions in this package
+  * Acts as our in-memory database
+  * In production, you'd use a real database
+- Initialized to nil, will be populated in main()
+
+
+===============================================================================
+SECTION 5: HTTP HANDLER FUNCTIONS
+===============================================================================
+
+----------------------------------------------
+HANDLER 1: GET ALL MOVIES
+----------------------------------------------
+
+Lines 27-31:
+func getMovies(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(movies)
+
+}
+
+EXPLANATION:
+
+Line 27: func getMovies(w http.ResponseWriter, r *http.Request) {
+- 'func' keyword declares a function
+- 'getMovies' is the function name (camelCase, unexported)
+- PARAMETERS:
+  * 'w http.ResponseWriter' - interface for writing HTTP response
+    - 'w' is variable name (convention for response writer)
+    - Used to send data back to client
+  * 'r *http.Request' - pointer to HTTP request object
+    - 'r' is variable name (convention for request)
+    - Contains request data (headers, body, URL, method, etc.)
+- This signature is REQUIRED for HTTP handler functions in Go
+
+Line 28: w.Header().Set("Content-Type", "application/json")
+- w.Header() - gets the response headers (map of header key-value pairs)
+- .Set("Content-Type", "application/json") - sets the Content-Type header
+- Tells the client that the response will be JSON data
+- Important for browsers/clients to parse response correctly
+
+Line 29: json.NewEncoder(w).Encode(movies)
+BREAKDOWN:
+- json.NewEncoder(w) - creates a new JSON encoder that writes to 'w'
+  * 'w' is the http.ResponseWriter (where response goes)
+- .Encode(movies) - encodes the 'movies' slice into JSON format
+  * Converts Go structs to JSON
+  * Writes directly to the response writer
+  * Automatically sends to client
+- This is a CHAINED operation (encoder creation → encoding)
+
+WHAT THIS FUNCTION DOES:
+1. Sets response header to JSON
+2. Converts entire movies slice to JSON
+3. Sends JSON response to client
+
+EXAMPLE RESPONSE:
+[
+  {
+    "id": "1",
+    "isbn": "1234",
+    "title": "3 Idiots",
+    "director": {
+      "firstname": "Rajkumar",
+      "lastname": "Hirani"
+    }
+  },
+  {
+    "id": "2",
+    "isbn": "5678",
+    "title": "Bahubali",
+    "director": {
+      "firstname": "S.S.",
+      "lastname": "Rajamouli"
+    }
+  }
+]
+
+
+----------------------------------------------
+HANDLER 2: DELETE A MOVIE
+----------------------------------------------
+
+Lines 33-45:
+func deleteMovies(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+
+	for index, item := range movies {
+		if item.ID == params["id"] {
+			movies = append(movies[:index], movies[index+1:]...)
+			//append the slice from the index to the end
+			break
+		}
+	}
+	json.NewEncoder(w).Encode(movies)
+}
+
+EXPLANATION:
+
+Line 33: func deleteMovies(w http.ResponseWriter, r *http.Request) {
+- Same handler signature as before
+- Function to delete a specific movie by ID
+
+Line 34: w.Header().Set("Content-Type", "application/json")
+- Sets response type to JSON
+
+Line 35: params := mux.Vars(r)
+- mux.Vars(r) - extracts URL parameters from the request
+  * Returns a map[string]string
+  * For URL like /movies/123, extracts {"id": "123"}
+- 'params' variable stores this map
+- SHORT VARIABLE DECLARATION (:=) - declares and initializes
+- Type is inferred as map[string]string
+
+Line 37: for index, item := range movies {
+- RANGE LOOP - iterates over the movies slice
+- 'index' - current position in slice (0, 1, 2, ...)
+- 'item' - copy of current Movie struct
+- 'range movies' - keyword that iterates over each element
+- Both index and item are declared with :=
+
+Line 38: if item.ID == params["id"] {
+- Compares current movie's ID with the ID from URL parameter
+- params["id"] - accesses the "id" value from params map
+- If they match, this is the movie to delete
+
+Line 39: movies = append(movies[:index], movies[index+1:]...)
+THIS IS THE SLICE DELETION TRICK:
+- movies[:index] - slice from start to index (BEFORE the item)
+  * If index=1: [item0]
+- movies[index+1:] - slice from after index to end
+  * If index=1: [item2, item3, ...]
+- append(..., ...) - joins these two slices together
+  * Effectively removes the item at 'index'
+- ... (three dots) - VARIADIC operator, unpacks the slice
+- Result: movie at 'index' is removed
+
+VISUAL EXAMPLE:
+Before: [Movie0, Movie1, Movie2, Movie3]  (delete Movie1, index=1)
+movies[:1] = [Movie0]
+movies[2:] = [Movie2, Movie3]
+append = [Movie0, Movie2, Movie3]
+
+Line 40: //append the slice from the index to the end
+- Comment explaining the deletion logic
+
+Line 41: break
+- Exits the for loop immediately
+- Once movie is found and deleted, no need to continue searching
+
+Line 44: json.NewEncoder(w).Encode(movies)
+- Encodes the updated movies slice (after deletion)
+- Sends entire remaining movies list as JSON response
+
+
+----------------------------------------------
+HANDLER 3: GET SINGLE MOVIE
+----------------------------------------------
+
+Lines 47-58:
+func getMovie(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+
+	for _, item := range movies {
+		if item.ID == params["id"] {
+			json.NewEncoder(w).Encode(item)
+			return
+		}
+	}
+}
+
+EXPLANATION:
+
+Line 47: func getMovie(w http.ResponseWriter, r *http.Request) {
+- Handler to get a single movie by ID
+
+Line 48: w.Header().Set("Content-Type", "application/json")
+- Sets response type to JSON
+
+Line 49: params := mux.Vars(r)
+- Extracts URL parameters (id from /movies/{id})
+
+Line 51: for _, item := range movies {
+- Range loop over movies
+- '_' (blank identifier) - ignores the index
+  * We don't need the index, only the item
+  * Using _ avoids "unused variable" compiler error
+- 'item' - current movie in iteration
+
+Line 52: if item.ID == params["id"] {
+- Checks if current movie's ID matches requested ID
+
+Line 53: json.NewEncoder(w).Encode(item)
+- Encodes only THIS movie (not entire slice)
+- Sends single movie as JSON response
+
+Line 54: return
+- Exits the function immediately
+- Important: stops searching once movie is found
+- If movie not found, function ends without sending any response
+  * This is a bug - should send 404 error
+
+IMPROVEMENT SUGGESTION:
+After the loop, should add:
+http.Error(w, "Movie not found", http.StatusNotFound)
+
+
+----------------------------------------------
+HANDLER 4: CREATE NEW MOVIE
+----------------------------------------------
+
+Lines 60-68:
+func createMovies(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var movie Movie
+	_ = json.NewDecoder(r.Body).Decode(&movie)
+	movie.ID = strconv.Itoa(rand.Intn(10000000))
+	movies = append(movies, movie)
+	json.NewEncoder(w).Encode(movie)
+}
+
+EXPLANATION:
+
+Line 60: func createMovies(w http.ResponseWriter, r *http.Request) {
+- Handler to create a new movie
+
+Line 61: w.Header().Set("Content-Type", "application/json")
+- Sets response type to JSON
+
+Line 62: var movie Movie
+- Declares a variable 'movie' of type Movie
+- EXPLICIT DECLARATION with 'var'
+- Initialized to zero value (empty struct)
+- Will be populated from request body
+
+Line 63: _ = json.NewDecoder(r.Body).Decode(&movie)
+BREAKDOWN:
+- r.Body - the request body (contains JSON data sent by client)
+- json.NewDecoder(r.Body) - creates JSON decoder that reads from request body
+- .Decode(&movie) - decodes JSON into the movie struct
+  * &movie - passes POINTER to movie (so it can be modified)
+  * Reads JSON and fills movie fields
+- _ = - ignores the error return value
+  * Decode returns an error if JSON is invalid
+  * Using _ ignores it (BAD PRACTICE - should handle error)
+
+EXAMPLE REQUEST BODY:
+{
+  "isbn": "9999",
+  "title": "New Movie",
+  "director": {
+    "firstname": "John",
+    "lastname": "Doe"
+  }
+}
+
+Line 64: movie.ID = strconv.Itoa(rand.Intn(10000000))
+BREAKDOWN:
+- rand.Intn(10000000) - generates random integer between 0 and 9,999,999
+- strconv.Itoa(...) - converts integer to string
+  * Itoa = Integer to ASCII
+- movie.ID = - assigns this random string to movie's ID field
+- This is how we generate a unique ID for new movies
+- NOTE: Not truly unique (could have collisions in production)
+
+Line 65: movies = append(movies, movie)
+- append(movies, movie) - adds the new movie to the movies slice
+  * Returns a new slice with movie added at the end
+- movies = - assigns the new slice back to movies variable
+- Now the new movie is in our in-memory database
+
+Line 66: json.NewEncoder(w).Encode(movie)
+- Encodes the newly created movie (with its new ID)
+- Sends it back to client as confirmation
+
+
+----------------------------------------------
+HANDLER 5: UPDATE EXISTING MOVIE
+----------------------------------------------
+
+Lines 70-87:
+func updateMovie(w http.ResponseWriter, r *http.Request) {
+	// 1. set json content type
+	w.Header().Set("Content-Type", "application/json")
+	// 2. get the params
+	params := mux.Vars(r)
+	// 3. loop through the movies
+	for index, item := range movies {
+		if item.ID == params["id"] {
+			// 4. delete the movie with the id that you've sent
+			movies = append(movies[:index], movies[index+1:]...)
+			// 5. add a new movie - the movie that we sent in the body of postman
+			var movie Movie
+			_ = json.NewDecoder(r.Body).Decode(&movie)
+			movie.ID = params["id"]
+			movies = append(movies, movie)
+			json.NewEncoder(w).Encode(movie)
+			return
+		}
+	}
+
+}
+
+EXPLANATION:
+
+Line 70: func updateMovie(w http.ResponseWriter, r *http.Request) {
+- Handler to update an existing movie
+
+Line 71: // 1. set json content type
+- Comment explaining step 1
+
+Line 72: w.Header().Set("Content-Type", "application/json")
+- Sets response type to JSON
+
+Line 73: // 2. get the params
+- Comment explaining step 2
+
+Line 74: params := mux.Vars(r)
+- Extracts URL parameters (id from /movies/{id})
+
+Line 75: // 3. loop through the movies
+- Comment explaining step 3
+
+Line 76: for index, item := range movies {
+- Loops through movies to find the one to update
+
+Line 77: if item.ID == params["id"] {
+- Checks if this is the movie to update
+
+Line 78: // 4. delete the movie with the id that you've sent
+- Comment explaining deletion step
+
+Line 79: movies = append(movies[:index], movies[index+1:]...)
+- DELETES the old movie (same deletion logic as deleteMovies)
+- Why delete? Because we're replacing it entirely
+
+Line 80: // 5. add a new movie - the movie that we sent in the body of postman
+- Comment explaining creation step
+
+Line 81: var movie Movie
+- Declares new movie variable to hold updated data
+
+Line 82: _ = json.NewDecoder(r.Body).Decode(&movie)
+- Decodes JSON from request body into movie struct
+- This contains the updated movie data
+
+Line 83: movie.ID = params["id"]
+- IMPORTANT: Sets the ID to the original ID from URL
+- Ensures the ID doesn't change during update
+- Without this, ID would be empty or wrong
+
+Line 84: movies = append(movies, movie)
+- Adds the updated movie to the slice
+- Effectively replaces the old movie
+
+Line 85: json.NewEncoder(w).Encode(movie)
+- Sends the updated movie back as JSON response
+
+Line 86: return
+- Exits function after successful update
+
+UPDATE STRATEGY:
+This is "delete + create" approach:
+1. Find old movie
+2. Delete it
+3. Create new movie with same ID but updated fields
+
+
+===============================================================================
+SECTION 6: MAIN FUNCTION (ENTRY POINT)
+===============================================================================
+
+Lines 89-119:
+func main() {
+	r := mux.NewRouter()
+
+	movies = append(movies, Movie{
+		ID:    "1",
+		Isbn:  "1234",
+		Title: "3 Idiots",
+		Director: &Director{
+			Firstname: "Rajkummar",
+			Lastname:  "Hirani",
+		},
+	})
+
+	movies = append(movies, Movie{
+		ID:    "2",
+		Isbn:  "5678",
+		Title: "Bahubali",
+		Director: &Director{
+			Firstname: "S.S. ",
+			Lastname:  "Rajamouli",
+		},
+	})
+
+	r.HandleFunc("/movies", getMovies).Methods("GET")
+	r.HandleFunc("/movies/{id}", getMovie).Methods("GET")
+	r.HandleFunc("/movies", createMovies).Methods("POST")
+	r.HandleFunc("/movies/{id}", updateMovie).Methods("PUT")
+	r.HandleFunc("/movies/{id}", deleteMovies).Methods("DELETE")
+
+	fmt.Printf("Starting server at port 8000\n")
+	log.Fatal(http.ListenAndServe(":8000", r))
+}
+
+EXPLANATION:
+
+Line 89: func main() {
+- The MAIN FUNCTION - entry point of the program
+- Execution always starts here
+- Must be in package main
+- No parameters, no return value
+
+Line 90: r := mux.NewRouter()
+- mux.NewRouter() - creates a new Gorilla Mux router
+  * Router handles HTTP request routing
+  * Matches URLs to handler functions
+- r := - short variable declaration, stores router in 'r'
+- Type: *mux.Router (pointer to Router)
+
+----------------------------------------------
+SEEDING INITIAL DATA
+----------------------------------------------
+
+Lines 92-102:
+	movies = append(movies, Movie{
+		ID:    "1",
+		Isbn:  "1234",
+		Title: "3 Idiots",
+		Director: &Director{
+			Firstname: "Rajkummar",
+			Lastname:  "Hirani",
+		},
+	})
+
+EXPLANATION:
+
+Line 92: movies = append(movies, Movie{
+- append(movies, Movie{...}) - adds a movie to the slice
+- Movie{ - STRUCT LITERAL (creating a new Movie instance)
+
+Line 93: ID: "1",
+- Sets ID field to "1"
+- Field: value syntax
+
+Line 94: Isbn: "1234",
+- Sets ISBN to "1234"
+
+Line 95: Title: "3 Idiots",
+- Sets movie title
+
+Line 96: Director: &Director{
+- Sets Director field
+- &Director{...} - creates a new Director and takes its ADDRESS (pointer)
+- & operator creates a pointer
+
+Line 97: Firstname: "Rajkummar",
+- Director's first name
+
+Line 98: Lastname: "Hirani",
+- Director's last name
+
+Lines 104-113: (Second movie - same pattern)
+	movies = append(movies, Movie{
+		ID:    "2",
+		Isbn:  "5678",
+		Title: "Bahubali",
+		Director: &Director{
+			Firstname: "S.S. ",
+			Lastname:  "Rajamouli",
+		},
+	})
+
+- Adds second movie "Bahubali" with ID "2"
+- Same structure as first movie
+
+PURPOSE OF THIS CODE:
+- Initializes the in-memory database with 2 sample movies
+- Without this, movies slice would be empty
+- In production, you'd load from a real database
+
+----------------------------------------------
+ROUTE REGISTRATION
+----------------------------------------------
+
+Lines 115-119:
+	r.HandleFunc("/movies", getMovies).Methods("GET")
+	r.HandleFunc("/movies/{id}", getMovie).Methods("GET")
+	r.HandleFunc("/movies", createMovies).Methods("POST")
+	r.HandleFunc("/movies/{id}", updateMovie).Methods("PUT")
+	r.HandleFunc("/movies/{id}", deleteMovies).Methods("DELETE")
+
+EXPLANATION:
+
+Line 115: r.HandleFunc("/movies", getMovies).Methods("GET")
+BREAKDOWN:
+- r.HandleFunc(...) - registers a route handler
+- "/movies" - the URL path
+- getMovies - the handler function to call
+- .Methods("GET") - restricts this route to GET requests only
+MEANING: GET request to /movies → calls getMovies function
+EXAMPLE: curl http://localhost:8000/movies
+
+Line 116: r.HandleFunc("/movies/{id}", getMovie).Methods("GET")
+- "/movies/{id}" - URL with PATH PARAMETER
+  * {id} is a placeholder for dynamic value
+  * /movies/1, /movies/2, /movies/abc all match
+- getMovie - handler function
+- .Methods("GET") - GET requests only
+MEANING: GET request to /movies/123 → calls getMovie with id=123
+EXAMPLE: curl http://localhost:8000/movies/1
+
+Line 117: r.HandleFunc("/movies", createMovies).Methods("POST")
+- "/movies" - same path as line 115, but different HTTP method
+- createMovies - handler function
+- .Methods("POST") - POST requests only
+MEANING: POST request to /movies → calls createMovies
+EXAMPLE: curl -X POST http://localhost:8000/movies -d '{"title":"New Movie"}'
+
+Line 118: r.HandleFunc("/movies/{id}", updateMovie).Methods("PUT")
+- "/movies/{id}" - URL with ID parameter
+- updateMovie - handler function
+- .Methods("PUT") - PUT requests only (standard for updates)
+MEANING: PUT request to /movies/1 → calls updateMovie with id=1
+EXAMPLE: curl -X PUT http://localhost:8000/movies/1 -d '{"title":"Updated"}'
+
+Line 119: r.HandleFunc("/movies/{id}", deleteMovies).Methods("DELETE")
+- "/movies/{id}" - URL with ID parameter
+- deleteMovies - handler function
+- .Methods("DELETE") - DELETE requests only
+MEANING: DELETE request to /movies/1 → calls deleteMovies with id=1
+EXAMPLE: curl -X DELETE http://localhost:8000/movies/1
+
+ROUTE SUMMARY:
+GET    /movies       → List all movies
+GET    /movies/{id}  → Get single movie
+POST   /movies       → Create new movie
+PUT    /movies/{id}  → Update movie
+DELETE /movies/{id}  → Delete movie
+
+This is a RESTful API design pattern.
+
+----------------------------------------------
+SERVER STARTUP
+----------------------------------------------
+
+Line 121: fmt.Printf("Starting server at port 8000\n")
+- fmt.Printf - formatted print to console
+- Prints message to console to confirm server is starting
+- \n - newline character
+
+Line 122: log.Fatal(http.ListenAndServe(":8000", r))
+BREAKDOWN:
+- http.ListenAndServe(":8000", r) - starts HTTP server
+  * ":8000" - listen on port 8000 (all network interfaces)
+  * r - the router to handle requests
+  * BLOCKS here - server runs until stopped
+  * Returns error if server fails to start
+- log.Fatal(...) - logs the error and exits program
+  * Only happens if server fails to start
+  * Exits with status code 1
+
+SERVER FLOW:
+1. Server starts on port 8000
+2. Waits for HTTP requests
+3. When request arrives:
+   a. Router matches URL + method to handler
+   b. Handler function is called
+   c. Handler processes request
+   d. Handler sends response
+4. Repeat step 3 forever
+5. Only stops if server crashes or manually stopped (Ctrl+C)
+
+
+===============================================================================
+COMPLETE REQUEST FLOW EXAMPLES
+===============================================================================
+
+EXAMPLE 1: GET ALL MOVIES
+--------------------------
+Client Request:
+  GET http://localhost:8000/movies
+
+Server Processing:
+  1. Router receives request
+  2. Matches "/movies" + GET method
+  3. Calls getMovies(w, r)
+  4. getMovies sets JSON header
+  5. Encodes entire movies slice to JSON
+  6. Sends response
+
+Client Response:
+  Status: 200 OK
+  Body: [{"id":"1","isbn":"1234","title":"3 Idiots",...}, ...]
+
+
+EXAMPLE 2: GET SINGLE MOVIE
+----------------------------
+Client Request:
+  GET http://localhost:8000/movies/1
+
+Server Processing:
+  1. Router receives request
+  2. Matches "/movies/{id}" + GET method
+  3. Extracts id=1 from URL
+  4. Calls getMovie(w, r)
+  5. getMovie loops through movies
+  6. Finds movie with ID="1"
+  7. Encodes that movie to JSON
+  8. Sends response
+
+Client Response:
+  Status: 200 OK
+  Body: {"id":"1","isbn":"1234","title":"3 Idiots",...}
+
+
+EXAMPLE 3: CREATE NEW MOVIE
+----------------------------
+Client Request:
+  POST http://localhost:8000/movies
+  Body: {"isbn":"9999","title":"New Movie","director":{"firstname":"John","lastname":"Doe"}}
+
+Server Processing:
+  1. Router receives request
+  2. Matches "/movies" + POST method
+  3. Calls createMovies(w, r)
+  4. createMovies decodes JSON body into Movie struct
+  5. Generates random ID (e.g., "1234567")
+  6. Appends movie to movies slice
+  7. Encodes new movie to JSON
+  8. Sends response
+
+Client Response:
+  Status: 200 OK
+  Body: {"id":"1234567","isbn":"9999","title":"New Movie",...}
+
+
+EXAMPLE 4: UPDATE MOVIE
+------------------------
+Client Request:
+  PUT http://localhost:8000/movies/1
+  Body: {"isbn":"1234","title":"Updated Title","director":{"firstname":"New","lastname":"Director"}}
+
+Server Processing:
+  1. Router receives request
+  2. Matches "/movies/{id}" + PUT method
+  3. Extracts id=1 from URL
+  4. Calls updateMovie(w, r)
+  5. updateMovie loops through movies
+  6. Finds movie with ID="1"
+  7. Deletes old movie from slice
+  8. Decodes JSON body into new Movie struct
+  9. Sets ID to "1" (from URL)
+  10. Appends updated movie to slice
+  11. Encodes updated movie to JSON
+  12. Sends response
+
+Client Response:
+  Status: 200 OK
+  Body: {"id":"1","isbn":"1234","title":"Updated Title",...}
+
+
+EXAMPLE 5: DELETE MOVIE
+------------------------
+Client Request:
+  DELETE http://localhost:8000/movies/1
+
+Server Processing:
+  1. Router receives request
+  2. Matches "/movies/{id}" + DELETE method
+  3. Extracts id=1 from URL
+  4. Calls deleteMovies(w, r)
+  5. deleteMovies loops through movies
+  6. Finds movie with ID="1"
+  7. Deletes movie from slice using append trick
+  8. Encodes remaining movies to JSON
+  9. Sends response
+
+Client Response:
+  Status: 200 OK
+  Body: [{"id":"2","isbn":"5678","title":"Bahubali",...}]
+
+
+===============================================================================
+KEY GO CONCEPTS DEMONSTRATED IN THIS CODE
+===============================================================================
+
+1. PACKAGE SYSTEM
+   - package main for executables
+   - Importing standard and third-party packages
+
+2. STRUCT TYPES
+   - Defining custom types with struct
+   - Struct tags for JSON mapping
+   - Pointer fields (*Director)
+
+3. SLICES
+   - Dynamic arrays ([]Movie)
+   - append() to add elements
+   - Slice operations for deletion
+
+4. FUNCTIONS
+   - Function declarations
+   - Parameters and types
+   - HTTP handler function signature
+
+5. HTTP SERVER
+   - http.ResponseWriter interface
+   - http.Request struct
+   - Setting headers
+   - Listening on port
+
+6. JSON ENCODING/DECODING
+   - json.NewEncoder for encoding
+   - json.NewDecoder for decoding
+   - Automatic struct ↔ JSON conversion
+
+7. ROUTING
+   - Gorilla Mux router
+   - Path parameters {id}
+   - Method-based routing
+
+8. ERROR HANDLING (or lack thereof)
+   - Using _ to ignore errors (bad practice shown)
+   - Should handle errors properly in production
+
+9. POINTERS
+   - &Director to create pointer
+   - *Director type declaration
+   - Passing &movie to Decode
+
+10. RANGE LOOPS
+    - for index, item := range slice
+    - Using _ to ignore index
+
+11. SHORT VARIABLE DECLARATIONS
+    - := for type inference
+    - Multiple variables: a, b := 1, 2
+
+12. STRING CONVERSIONS
+    - strconv.Itoa for int to string
+
+
+===============================================================================
+IMPROVEMENTS FOR PRODUCTION CODE
+===============================================================================
+
+1. ERROR HANDLING
+   - Currently ignores all errors
+   - Should check and handle errors properly
+
+2. DATABASE
+   - Currently uses in-memory slice
+   - Should use real database (PostgreSQL, MongoDB, etc.)
+
+3. VALIDATION
+   - No input validation
+   - Should validate movie data before saving
+
+4. UNIQUE IDs
+   - Random IDs can collide
+   - Should use UUID or database auto-increment
+
+5. HTTP STATUS CODES
+   - Should return proper status codes (404, 201, etc.)
+
+6. MIDDLEWARE
+   - Add logging, authentication, CORS
+
+7. CONFIGURATION
+   - Port hardcoded
+   - Should use environment variables
+
+8. TESTING
+   - No tests shown
+   - Should have unit and integration tests
+
+9. GRACEFUL SHUTDOWN
+   - Server stops abruptly
+   - Should handle shutdown signals
+
+10. CONCURRENCY SAFETY
+    - movies slice not thread-safe
+    - Should use mutex or database
+
+
+===============================================================================
+END OF EXPLANATION
+===============================================================================

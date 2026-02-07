@@ -2,93 +2,122 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
-	"math/rand"
-	"net/http"
-	"strconv"
+		"fmt"
+			"github.com/gorilla/mux"
+				"log"
+					"math/rand"
+						"net/http"
+							"strconv"
+							)
 
-	"github.com/gorilla/mux"
-	"golang.org/x/tools/go/analysis/passes/appends"
-)
+							// struct is like an object in golang and have a key value pair with type of data
+							type Movie struct {
+								ID       string    `json:"id"`
+									Isbn     string    `json:"isbn"`
+										Title    string    `json:"title"`
+											Director *Director `json:"director"`
+											}
 
-// struct is like an object in golang and have a key value pair with type of data
-type Movie struct {
-	ID       string    `json:"id"`
-	Isbn     string    `json:"isbn"`
-	Title    string    `json:"title"`
-	Director *Director `json:"director"`
-}
+											type Director struct {
+												Firstname string `json:"firstname"`
+													Lastname  string `json:"lastname"`
+													}
 
-type Director struct {
-	Firstname string `json:"firstname"`
-	Lastname  string `json:"lastname"`
-}
+													var movies []Movie
 
-var movies []Movie
+													func getMovies(w http.ResponseWriter, r *http.Request) {
+														w.Header().Set("Content-Type", "application/json")
+															json.NewEncoder(w).Encode(movies)
 
-func getMovies(w http.ResponseWriter, r *http.Request){
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(movies)
+															}
 
-	}
+															func deleteMovies(w http.ResponseWriter, r *http.Request) {
+																w.Header().Set("Content-Type", "application/json")
+																	params := mux.Vars(r)
 
-	func deleteMovies(w http.ResponseWriter, r *http.Request){
-		w.Header().Set("Content-Type","application/json")
-		params := mux.Vars(r)
+																		for index, item := range movies {
+																				if item.ID == params["id"] {
+																							movies = append(movies[:index], movies[index+1:]...)
+																										//append the slice from the index to the end
+																													break
+																															}
+																																}
+																																	json.NewEncoder(w).Encode(movies)
+																																	}
 
+																																	func getMovie(w http.ResponseWriter, r *http.Request) {
+																																		w.Header().Set("Content-Type", "application/json")
+																																			params := mux.Vars(r)
 
-		for index, item := range movies{
-			if item.ID == params["id"]{
-				movies= append(movies[:index], movies[index+1:]...)
-				 //append the slice from the index to the end
-				 break
-			}
-		}
-		json.NewEncoder(w).Encode(movies)
-	}
+																																				for _, item := range movies {
+																																						if item.ID == params["id"] {
+																																									json.NewEncoder(w).Encode(item)
+																																												return
+																																														}
+																																															}
+																																															}
 
-	func getMovie(w http.ResponseWriter, r *http.Request){
-		w.Header().Set("Content-Type","application/json")
-		params := mux.Vars(r)
+																																															func createMovies(w http.ResponseWriter, r *http.Request) {
+																																																w.Header().Set("Content-Type", "application/json")
+																																																	var movie Movie
+																																																		_ = json.NewDecoder(r.Body).Decode(&movie)
+																																																			movie.ID = strconv.Itoa(rand.Intn(10000000))
+																																																				movies = append(movies, movie)
+																																																					json.NewEncoder(w).Encode(movie)
+																																																					}
 
-		for _, item := range movies{
-			if item.ID == params["id"]{
-				json.NewEncoder(w).Encode(item)
-				return
-			}
-		}
-	}
+																																																					func updateMovie(w http.ResponseWriter, r *http.Request) {
+																																																						// 1. set json content type
+																																																							w.Header().Set("Content-Type", "application/json")
+																																																								// 2. get the params
+																																																									params := mux.Vars(r)
+																																																										// 3. loop through the movies
+																																																											for index, item := range movies {
+																																																													if item.ID == params["id"] {
+																																																																// 4. delete the movie with the id that you've sent
+																																																																			movies = append(movies[:index], movies[index+1:]...)
+																																																																						// 5. add a new movie - the movie that we sent in the body of postman
+																																																																									var movie Movie
+																																																																												_ = json.NewDecoder(r.Body).Decode(&movie)
+																																																																															movie.ID = params["id"]
+																																																																																		movies = append(movies, movie)
+																																																																																					json.NewEncoder(w).Encode(movie)
+																																																																																								return
+																																																																																										}
+																																																																																											}
 
-func main() {
-	r := mux.NewRouter()
+																																																																																											}
 
-	movies = append(movies, Movie{
-		ID:    "1",
-		Isbn:  "1234",
-		Title: "3 Idiots",
-		Director: &Director{
-			Firstname: "Rajkummar",
-			Lastname:  "Hirani",
-		},
-	})
+																																																																																											func main() {
+																																																																																												r := mux.NewRouter()
 
-	movies = append(movies, Movie{
-		ID:    "2",
-		Isbn:  "5678",
-		Title: "Bahubali",
-		Director: &Director{
-			Firstname: "S.S. ",
-			Lastname:  "Rajamouli",
-		},
-	})	
+																																																																																													movies = append(movies, Movie{
+																																																																																															ID:    "1",
+																																																																																																	Isbn:  "1234",
+																																																																																																			Title: "3 Idiots",
+																																																																																																					Director: &Director{
+																																																																																																								Firstname: "Rajkummar",
+																																																																																																											Lastname:  "Hirani",
+																																																																																																													},
+																																																																																																														})
 
-	r.HandleFunc("/movies", getMovies).Methods("GET")
-	r.HandleFunc("/movies/{id}", getMovie).Methods("GET")
-	r.HandleFunc("/movies", createMovies).Methods("POST")
-	r.HandleFunc("/movies/{id}", updateMovie).Methods("PUT")
-	r.HandleFunc("/movies/{id}", deleteMovies).Methods("DELETE")
+																																																																																																															movies = append(movies, Movie{
+																																																																																																																	ID:    "2",
+																																																																																																																			Isbn:  "5678",
+																																																																																																																					Title: "Bahubali",
+																																																																																																																							Director: &Director{
+																																																																																																																										Firstname: "S.S. ",
+																																																																																																																													Lastname:  "Rajamouli",
+																																																																																																																															},
+																																																																																																																																})
 
-	fmt.Printf("Starting server at port 8000\n")
-	log.Fatal(http.ListenAndServe(":8000", r))
-}
+																																																																																																																																	r.HandleFunc("/movies", getMovies).Methods("GET")
+																																																																																																																																		r.HandleFunc("/movies/{id}", getMovie).Methods("GET")
+																																																																																																																																			r.HandleFunc("/movies", createMovies).Methods("POST")
+																																																																																																																																				r.HandleFunc("/movies/{id}", updateMovie).Methods("PUT")
+																																																																																																																																					r.HandleFunc("/movies/{id}", deleteMovies).Methods("DELETE")
+
+																																																																																																																																						fmt.Printf("Starting server at port 8000\n")
+																																																																																																																																							log.Fatal(http.ListenAndServe(":8000", r))
+																																																																																																																																							}
+																																																																																																																																							

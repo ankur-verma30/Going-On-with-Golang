@@ -1259,3 +1259,212 @@ name → private/unexported
 
 ✅ Q4: What is _ used for?
 ➡️ Ignore values + avoid unused warnings.
+
+
+########################
+🔷 Operators in Golang
+########################
+➤ A symbol that performs an operation on one or more operands
+➤ Go operators are simple, explicit, and predictable
+➤ No operator overloading (except + for strings)
+
+
+1️⃣ Arithmetic Operators
+Used for mathematical calculations.
+| Operator | Meaning        |
+| -------- | -------------- |
+| `+`      | Addition       |
+| `-`      | Subtraction    |
+| `*`      | Multiplication |
+| `/`      | Division       |
+| `%`      | Modulus        |
+
+✅ Example
+a := 10
+b := 3
+
+fmt.Println(a + b) // 13
+fmt.Println(a - b) // 7
+fmt.Println(a * b) // 30
+fmt.Println(a / b) // 3 (integer division)
+fmt.Println(a % b) // 1
+
+⚠️ Interview Traps
+1️⃣ Integer Division
+fmt.Println(10 / 4) // 2, NOT 2.5
+Fix: fmt.Println(float64(10) / float64(4))
+
+2️⃣ Modulus Rules
+% works only with integers
+❌ 10.5 % 2 // invalid
+
+
+2️⃣ Relational (Comparison) Operators
+Used for comparisons → result is bool.
+| Operator | Meaning          |
+| -------- | ---------------- |
+| `==`     | Equal            |
+| `!=`     | Not equal        |
+| `>`      | Greater          |
+| `<`      | Less             |
+| `>=`     | Greater or equal |
+| `<=`     | Less or equal    |
+
+✅ Example
+fmt.Println(5 > 3)   // true
+fmt.Println(5 == 3)  // false
+
+⚠️ Interview Traps
+➤ Structs can be compared only if all fields are comparable
+➤ Slices, maps, functions ❌ cannot be compared
+
+a := []int{1,2}
+b := []int{1,2}
+fmt.Println(a == b) // ❌ compile error
+
+
+3️⃣ Logical Operators
+Used with boolean expressions.
+| Operator | Meaning |
+| -------- | ------- |
+| `&&`     | AND     |
+| `||      | OR      |
+| `!`      | NOT     |
+✅ Example
+age := 20
+fmt.Println(age > 18 && age < 30) // true
+
+
+📌 Short-Circuit Evaluation
+false && panic("won’t run")
+true || panic("won’t run")
+👉 Very important for nil checks.
+
+
+4️⃣ Assignment Operators
+| Operator | Meaning           |
+| -------- | ----------------- |
+| `=`      | Assign            |
+| `+=`     | Add & assign      |
+| `-=`     | Subtract & assign |
+| `*=`     | Multiply & assign |
+| `/=`     | Divide & assign   |
+| `%=`     | Modulus & assign  |
+
+✅ Example
+x := 10
+x += 5
+fmt.Println(x) // 15
+
+
+❌ No ++x or --x in Go
+Only postfix is allowed:
+x++ // valid
+++x // invalid
+👉 And ++ / -- are statements, not expressions.
+
+
+5️⃣ Bitwise Operators
+Operate at bit level.
+| Operator | Meaning     |
+| -------- | ----------- |
+| `&`      | AND         |
+| `|`      | OR          |
+| `^`      | XOR         |
+| `<<`     | Left shift  |
+| `>>`     | Right shift |
+| `&^`     | AND NOT     |
+
+✅ Example
+a := 5  // 0101
+b := 3  // 0011
+
+fmt.Println(a & b)  // 1
+fmt.Println(a | b)  // 7
+fmt.Println(a ^ b)  // 6
+
+🔥 AND NOT (&^) – Go Specific
+a := 10 // 1010
+b := 3  // 0011
+➤ fmt.Println(a &^ b) // 8 (1010 & 1100)
+➤ Used in flags & masks.
+
+
+6️⃣ Unary Operators
+Operate on single operand.
+| Operator | Meaning     |
+| -------- | ----------- |
+| `+`      | Unary plus  |
+| `-`      | Unary minus |
+| `!`      | Logical NOT |
+| `^`      | Bitwise NOT |
+| `*`      | Dereference |
+| `&`      | Address-of  |
+
+✅ Example
+x := 10
+fmt.Println(-x) // -10
+
+
+7️⃣ Pointer Operators
+x := 10
+p := &x   // address-of
+fmt.Println(*p) // dereference
+
+➤ No pointer arithmetic in Go ❌
+➤ Safer than C/C++
+
+
+8️⃣ Type Operators
+1️⃣ Type Conversion
+var a int = 10
+var b float64 = float64(a)
+
+2️⃣ Type Assertion (Interface)
+var i interface{} = "Go"
+s := i.(string)
+
+Safe version: s, ok := i.(string)
+
+
+9️⃣ Channel Operators (Concurrency)
+ch <- 10   // send
+x := <-ch  // receive
+👉 Used only with chan.
+
+
+🔟 Operator Precedence(PEMDAS -> Parantheses, Exponents, Multiplication, Division and Substraction)
+Highest → Lowest (Simplified)
+* / % << >> & &^
++ - | ^
+== != < <= > >=
+&&
+||
+
+✅ Example
+fmt.Println(2 + 3 * 4) // 14
+
+
+1️⃣1️⃣ Operators NOT Present in Go
+❌ No:
+    ✔️ Ternary operator ?:
+    ✔️ Pre-increment ++x
+    ✔️ Operator overloading
+    ✔️ Pointer arithmetic
+
+
+🔄 Common Interview Questions
+1️⃣ Why no ternary operator?
+➡️ Readability and simplicity.
+
+
+2️⃣ Why no operator overloading?
+➡️ Prevents unreadable code.
+
+
+3️⃣ Why ++ is a statement?
+➡️ Avoid side effects in expressions.
+
+
+4️⃣ Can strings be compared?
+➡️ Yes (lexicographically)
