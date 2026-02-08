@@ -1,4 +1,4 @@
-module movies-crud-api
+module github.com/bookstore
 
 go 1.25.5
 
