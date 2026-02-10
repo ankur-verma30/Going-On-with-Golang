@@ -41,4 +41,15 @@ func main() {
 	g = append(g, f...)
 	fmt.Println(g)
 
+
+	newSlice := []int{1,2,3,4,5,6}
+	otherSlicefromNewSlice:=newSlice[2:5]
+	fmt.Println("The other slice created from new slice is ",otherSlicefromNewSlice)
+
+
+	//convert with slices
+	otherSlicefromNewSlice[1]=100 // reference is shared with newSlice
+
+	fmt.Println("The other slice created from new slice is ",otherSlicefromNewSlice[1])
+	fmt.Println("The new slice is ",newSlice[3])
 }
