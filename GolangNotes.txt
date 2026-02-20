@@ -167,7 +167,7 @@ Implicit Implementation
 type Writer interface {
     Write([]byte)
 }
-If a struct has Write() → it implements Writer
+If a struct has Write() ─────────▶ it implements Writer
 No implements keyword 🔥
 
 
@@ -343,7 +343,7 @@ func functionName(parameters) returnType {
     ✔️ Take arguments
     ✔️ Return values
 ❌ This is invalid: func main() int { }
-👉 Execution Flow: OS → Go Runtime → main()
+👉 Execution Flow: OS ─────────▶ Go Runtime ─────────▶ main()
 
 
 🔁 Curly Braces { }
@@ -478,7 +478,7 @@ package main
 🔷 Rules
 ➤ Must be first non-comment line
 ➤ Every file belongs to exactly one package
-➤ Files in same folder → same package
+➤ Files in same folder ─────────▶ same package
 
 ❌ Invalid:
 ➤ package main
@@ -769,7 +769,7 @@ var isActive bool = true
 🔄 Properties
 ➤ Only true or false
 ➤ No truthy/falsy values
-➤ Cannot convert int → bool
+➤ Cannot convert int ─────────▶ bool
 
 ❌ Invalid: if 1 {} // int is not bool
 
@@ -1119,7 +1119,7 @@ func main() {
 	len := 100
 	fmt.Println(len) // prints 100
 }
-🚫 This shadows built-in len() function → confusing.
+🚫 This shadows built-in len() function ─────────▶ confusing.
 
 
 ================
@@ -1253,8 +1253,8 @@ overly long names
 
 ✅ Q3: What decides public/private in Go?
 ➡️ First letter case
-Name → public/exported
-name → private/unexported
+Name ─────────▶ public/exported
+name ─────────▶ private/unexported
 
 
 ✅ Q4: What is _ used for?
@@ -1300,7 +1300,7 @@ Fix: fmt.Println(float64(10) / float64(4))
 
 
 2️⃣ Relational (Comparison) Operators
-Used for comparisons → result is bool.
+Used for comparisons ─────────▶ result is bool.
 | Operator | Meaning          |
 | -------- | ---------------- |
 | `==`     | Equal            |
@@ -1434,7 +1434,7 @@ x := <-ch  // receive
 
 
 🔟 Operator Precedence(PEMDAS -> Parantheses, Exponents, Multiplication, Division and Substraction)
-Highest → Lowest (Simplified)
+Highest ─────────▶ Lowest (Simplified)
 * / % << >> & &^
 + - | ^
 == != < <= > >=
@@ -1487,7 +1487,7 @@ var arr [5]int
 var arr [5]int
 
 ➤ Creates array of 5 integers
-➤ Zero-initialized → [0 0 0 0 0]
+➤ Zero-initialized ─────────▶ [0 0 0 0 0]
 
 
 2️⃣ Declaration with Initialization
@@ -1501,7 +1501,7 @@ Result: [1 2 0 0 0]
 
 4️⃣ Length Inference (...)
 arr := [...]int{10, 20, 30}
-Compiler determines size → [3]int
+Compiler determines size ─────────▶ [3]int
 
 
 5️⃣ Index-Based Initialization
@@ -1517,7 +1517,7 @@ arr[1] = 50
 
 ⚠️ Bounds Check (Runtime Panic)
 fmt.Println(arr[3]) // panic
-➤ Go performs runtime bounds checking → safety.
+➤ Go performs runtime bounds checking ─────────▶ safety.
 
 
 🔄 Length of Array
@@ -1604,8 +1604,8 @@ fmt.Println(matrix[1][0]) // 3
 ➤ Size known at compile time
 
 Stack vs Heap
-Small arrays → stack
-Large arrays → heap (escape analysis)
+Small arrays ─────────▶ stack
+Large arrays ─────────▶ heap (escape analysis)
 
 
 🔄 When to Use Arrays in Go?
@@ -1691,7 +1691,7 @@ var s []int
 
 ➤ len(s) == 0
 ➤ cap(s) == 0
-➤ s == nil → true
+➤ s == nil ─────────▶ true
 
 
 2️⃣ Empty Slice
@@ -1855,7 +1855,7 @@ It means that: Changes made to one slice may unintentionally affect another slic
 This happens due to Go's slice architecutre.
 
 
-🔄 Before Ripple Effect → Understand Slice Internals (CRITICAL)
+🔄 Before Ripple Effect ─────────▶ Understand Slice Internals (CRITICAL)
 ➤ A slice is NOT an array.
 ➤ Internally, a slice is a descriptor (header) with three fields:
 
@@ -1918,11 +1918,11 @@ s2: [999 30]
 s1 = [10, 20, 30, 40]
           ↑
         s2[0]
-👉 Changing s2[0] modifies index 1 of the array → reflected in s1.
+👉 Changing s2[0] modifies index 1 of the array ─────────▶ reflected in s1.
 
 
 🔄 Ripple Effect with append()
-Case 1️⃣: Capacity Available → Ripple Happens
+Case 1️⃣: Capacity Available ─────────▶ Ripple Happens
 s1 := []int{1, 2, 3, 4}
 s2 := s1[1:3] // len=2, cap=3
 
@@ -1942,9 +1942,9 @@ fmt.Println(s2)
 ➤ s1 affected
 
 
-Case 2️⃣: Capacity Exhausted → NO Ripple
+Case 2️⃣: Capacity Exhausted ─────────▶ NO Ripple
 s1 := []int{1, 2, 3, 4}
-s2 := s1[1:3:3] // Full slice expression → cap limited
+s2 := s1[1:3:3] // Full slice expression ─────────▶ cap limited
 
 s2 = append(s2, 999)
 
@@ -2102,7 +2102,7 @@ for i, r := range s {
 ➡️ range = UTF-8 aware
 
 
-🔄 String → Rune Slice → String
+🔄 String ─────────▶ Rune Slice ─────────▶ String
 s := "Go🌍"
 r := []rune(s)
 fmt.Println(len(s))   // 6 bytes
@@ -2184,3 +2184,237 @@ Use []rune when:
 
 5️⃣ How to safely modify a string?
 ✔️ Convert to []rune, modify, convert back.
+
+
+################################
+🔷 Demystifying Maps in Golang
+################################
+Maps are one of the most used data structures in Go — especially in backend, APIs, caching, configuration, and data processing.
+
+If you master maps, you master:
+    ✔️ Hashing behavior
+    ✔️ Reference semantics
+    ✔️ Concurrency pitfalls
+    ✔️ Performance optimization
+
+
+🔄 What is a Map in Go?
+A map is a built-in data structure that associates keys with values. It is implemented as a hash table and provides efficient lookups, insertions, and deletions.
+key ─────────▶ value
+
+✅ Example:
+m := map[string]int{
+    "apple":  10,
+    "banana": 20,
+}
+
+🔄 Declaring and Initializing Maps
+1️⃣ Zero Value Map
+var m map[string]int
+
+➤ m == nil ─────────▶ true
+➤ Cannot insert values into nil map ─────────▶ panic
+➤ Reading from nil map returns zero value ─────────▶ 0
+➤ Writing to nil map causes runtime panic
+m["key"] = 100 // ❌ panic: assignment to entry in nil map
+
+
+🔄 Initialization of Empty Map
+1️⃣ Using Literal
+m := map[string]int{}
+➤ Now it is initialized and can be used safely.
+
+2️⃣ Using make()
+m := make(map[string]int)
+m["apple"] = 10
+➤ Now it is initialized and can be used safely.
+
+3️⃣var m map[string]int= map[string]int{}
+
+
+🔄 With Initial Capacity
+m := make(map[string]int, 100)
+➤ Pre-allocates space for 100 entries
+➤ Performance boost if size known
+➤ Capacity is a hint, not a fixed size
+
+
+4️⃣ Map Literal
+m := map[string]int{
+    "apple":  10,
+    "banana": 20,
+}
+
+
+🔄 Map Internal Architecture
+Go maps are implemented as hash tables with separate chaining for collision resolution.
+Internally: key ─────────▶ hash function ─────────▶ bucket ─────────▶ value
+
+🔁 Core Concepts
+➤ Uses hashing
+➤ Data stored in buckets
+➤ Each bucket stores multiple key-value pairs
+➤ Buckets linked when overflow happens
+➤ Automatically resizes (rehashes)
+
+
+🔄 Key Rules for Map Keys
+1️⃣ Must be Comparable types
+✅ Allowed: bool, int, float, string, pointers, structs (if all fields comparable)
+❌ Not allowed: slices, maps, functions
+
+
+🔄 Reading From Map
+v:= m["key"]
+➤ If key exists ─────────▶ returns value
+➤ If key does not exist ─────────▶ returns zero value of value type (e.g., 0 for int, "" for string)
+
+
+🔄 Comma-OK Idiom
+v, ok := m["key"]
+➤ ok == true ─────────▶ key exists
+➤ ok == false ─────────▶ key does not exist
+This is crucial to distinguish between a missing key and a key with zero value.
+
+✅ Example:
+m := map[string]int{
+    "apple": 10,
+}
+v, ok := m["banana"]
+fmt.Println(v)  // 0 (zero value)
+fmt.Println(ok) // false (key does not exist)
+
+
+🔄 Writing to Map
+m["key"] = value
+➤ If key exists ─────────▶ updates value
+➤ If key does not exist ─────────▶ creates new entry
+
+
+🔄 Deleting from Map
+delete(m, "key")
+➤ Removes key-value pair if key exists
+➤ No error if key does not exist
+
+
+🔄 Iterating Over Map
+for k, v := range m {
+    fmt.Println(k, v)
+}
+➤ Iteration order is random ─────────▶ do NOT rely on it
+➤ Each run may produce different order
+
+
+🔄 Map Are Reference Types
+When you assign a map to another variable, both variables point to the same underlying data structure.
+m1 := map[string]int{
+    "apple": 10,
+}
+m2 := m1
+m2["banana"] = 20
+fmt.Println(m1) // map[apple:10 banana:20]
+fmt.Println(m2) // map[apple:10 banana:20]
+
+Map behaves like: slices, pointers, channels, functions (reference semantics).
+
+
+🔄 Passing Maps to Functions
+func modify(m map[string]int) {
+    m["x"] = 500
+}
+Change is visible outside the function because map header is passed by value but underlying structure is a reference type.
+
+
+🔄 Comparing Maps
+Maps cannot be compared directly using == operator (except for nil).
+❌ m1 == m2 // compile error
+✔️ Only comparison allowed is with nil: m == nil
+
+✅ To compare maps, you must write a custom function that checks keys and values.
+
+
+🔄 Concurrency Warning
+Maps are NOT safe for concurrent use by default. If multiple goroutines access a map simultaneously and at least one of them modifies the map, it can lead to a race condition and cause a runtime panic.
+fatal error: concurrent map writes
+
+If multiple goroutines access map:
+    ✔️ Use sync.Mutex
+    ✔️ Or sync.RWMutex
+    ✔️ Or sync.Map
+
+
+🔄 When to use sync.Map
+✅ Use sync.Map when:
+    ✔️ High contention
+    ✔️ Many goroutines
+    ✔️ Read-heavy workloads
+    ✔️ When you want built-in concurrency safety without manual locking
+
+
+🔄 Map Resizing and Growth
+When:
+    ✔️ Load factor increases
+    ✔️ Too many collisions
+
+Go:
+    ✔️ Allocates new larger bucket array
+    ✔️ Gradually rehashes elements
+    ✔️ Uses incremental growth
+👉 This prevents: Big latency spikes
+
+
+🔄 Zero Value Behavior
+✅ Example:
+m := make(map[string]int)
+fmt.Println(m["unknown"])
+
+✅ Output: 0
+👉 Because: Zero value of int is 0
+
+For bool map:
+m := make(map[string]bool)
+fmt.Println(m["x"]) // false
+
+
+🔄 Map of Structs vs Map of Pointers
+map[string]User
+map[string]*User
+
+Use pointer version when:
+    ✔️ Struct is large
+    ✔️ Frequent modifications
+    ✔️ Performance sensitive
+
+
+🔄 Performance Insights
+Average complexity:
+    ✔️ Lookup ─────────▶ O(1)
+    ✔️ Insert ─────────▶ O(1)
+    ✔️ Delete ─────────▶ O(1)
+Worst case:  O(n) (heavy collisions)
+
+
+🟢 Questions
+❓ Q1  Why can’t slice be a map key?
+─────────▶ Because slices are not comparable.
+
+❓ Q2  Why is map iteration unordered?
+─────────▶ To avoid order dependency.
+
+❓ Q3  Is map thread-safe?
+─────────▶ No.
+
+❓ Q4  Difference between nil map and empty map?
+| Feature   | nil map | empty map |
+| --------- | ------- | --------- |
+| Can read  | ✔       | ✔        |
+| Can write | ❌ panic| ✔        |
+| len       | 0       | 0         |
+
+
+🔄 Memory Model Summary
+Map variable contains:
+    ✔️ Pointer to runtime hash table
+    ✔️ Count
+    ✔️ Flags
+👉 Real data lives in heap.
