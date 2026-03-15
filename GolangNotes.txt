@@ -30,12 +30,10 @@ Google engineers faced problems with:
 ➤ Poor concurrency support ❌
 ➤ Hard-to-maintain large codebases ❌
 
-👉 Goal of Go:
-“A language as fast as C, as readable as Python, and as safe as Java — but simpler.”
+👉 Goal of Go: “A language as fast as C, as readable as Python, and as safe as Java — but simpler.”
 
 
 🧠 Go Design Philosophy
-Go follows strong opinions:
 | Principle                    | Meaning                           |
 | ---------------------------- | --------------------------------- |
 | Simplicity                   | Less syntax, fewer keywords       |
@@ -92,12 +90,12 @@ The Famous G-M-P Model
 | G         | Goroutine               |
 | M         | OS Thread               |
 | P         | Processor (logical CPU) |
+
 G (goroutine)
    ↓
 P (scheduler)
    ↓
 M (OS thread)
-
 
 ❓ Why this matters?
 ➤ Millions of goroutines can run on few OS threads
@@ -118,8 +116,8 @@ Stack vs Heap in Go
 ⭐ Features of Go Language (In-Depth)
 1️⃣ Simple & Clean Syntax
 No
-    ✔️ Classes 
-    ✔️ Inheritance 
+    ✔️ Classes
+    ✔️ Inheritance
     ✔️ Generics (added later, minimal) ❌
     ✔️ Exceptions ❌
 
@@ -2418,3 +2416,845 @@ Map variable contains:
     ✔️ Count
     ✔️ Flags
 👉 Real data lives in heap.
+
+
+###############################
+🔷 Understanding Structs in Go
+###############################
+➤ Structs are one of the most important data structures in Go.
+➤ They allow you to group related data into a single type, similar to objects in OOP languages.
+➤ But Go structs are simpler and more powerful because they work with:
+    ✔️ composition
+    ✔️ interfaces
+    ✔️ memory efficiency
+    ✔️ method receivers
+
+
+❓ What Are Structs
+➤ A struct is a composite data type that groups variables under one name.
+➤ Think of it as a custom data structure.
+
+✅ Example
+type User struct {
+	Name  string
+	Age   int
+	Email string
+}
+👉 Now User becomes a new type.
+
+
+❓ Why Structs Are Used
+Structs help when you want to represent real-world entities.
+| Entity  | Fields                  |
+| ------- | ----------------------- |
+| User    | name, email, age        |
+| Product | id, price, stock        |
+| Order   | orderId, userId, amount |
+
+✅ Example:
+type Product struct {
+	ID    int
+	Name  string
+	Price float64
+}
+
+
+🔄 Creating Struct Variables
+Method 1️⃣ — Zero Value Initialization
+var u User
+
+Default values:
+| Type   | Default |
+| ------ | ------- |
+| int    | 0       |
+| string | ""      |
+| bool   | false   |
+
+✅ Example:
+fmt.Println(u)
+Output: { 0 }
+
+
+Method 2️⃣ — Struct Literal
+u := User{
+	Name:  "Ankur",
+	Age:   22,
+	Email: "ankur@email.com",
+}
+👉 Preferred in production code.
+
+
+Method 3️⃣ — Without Field Names (Not Recommended)
+u := User{"Ankur", 22, "ankur@email.com"}
+
+❗ Problem: Order must match struct definition.
+
+
+🔄 Accessing Struct Fields
+➤ Using dot operator
+
+fmt.Println(u.Name)
+fmt.Println(u.Email)
+
+Updating value: u.Age = 23
+
+
+🔄 Struct Memory Layout
+Struct fields are stored sequentially in memory.
+
+✅ Example:
+type Example struct {
+	A int
+	B int
+	C int
+}
+👉 Memory layout: [A][B][C]
+
+
+🔄 Anonymous Structs
+Sometimes you need a struct only once.
+
+✅ Example:
+user := struct {
+	Name string
+	Age  int
+}{
+	Name: "Ankur",
+	Age:  22,
+}
+
+Useful for:
+    ✔️ JSON parsing
+    ✔️ temporary objects
+    ✔️ tests
+
+
+🔄 Struct Comparison
+Structs are comparable if all fields are comparable.
+
+✅ Example:
+type Point struct {
+	X int
+	Y int
+}
+p1 := Point{1,2}
+p2 := Point{1,2}
+fmt.Println(p1 == p2) // true
+
+❗ But if struct contains:
+    ✔️ slice
+    ✔️ map
+    ✔️ function
+👉 Comparison not allowed.
+
+
+🔄 Struct Tags (Important for Backend)
+Struct tags are metadata attached to fields.
+
+✅ Example:
+type User struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+Used by:
+    ✔️ JSON encoder
+    ✔️ ORM
+    ✔️ validation libraries
+
+✅ Example JSON:
+{
+ "name":"Ankur",
+ "email":"ankur@email.com"
+}
+
+
+🔄 Embedded Structs
+Go uses composition instead of inheritance.
+
+✅ Example:
+type Address struct {
+	City  string
+	State string
+}
+
+type User struct {
+	Name string
+	Address
+}
+👉 Now: u.City works directly.
+
+
+🔄 Struct with Methods
+Structs can have methods.
+
+✅ Example:
+type Rectangle struct {
+	Width  int
+	Height int
+}
+
+func (r Rectangle) Area() int {
+	return r.Width * r.Height
+}
+
+🔁 Usage:
+rect := Rectangle{10,5}
+fmt.Println(rect.Area())
+
+
+🔄 Pointer vs Value Struct
+1️⃣ Value Receiver
+func (u User) UpdateName(name string) {
+	u.Name = name
+}
+👉 Does NOT modify original struct.
+
+2️⃣ Pointer Receiver
+func (u *User) UpdateName(name string) {
+	u.Name = name
+}
+👉 Modifies original struct.
+👉 Used in real production code.
+
+
+🔄 Structs and Pointers
+Create pointer to struct:
+u := &User{
+	Name: "Ankur",
+}
+➤ Access still uses dot: u.Name
+➤ Go automatically dereferences.
+
+
+🔄 Nested Structs
+Struct inside struct.
+
+type Address struct {
+	City string
+}
+
+type User struct {
+	Name string
+	Addr Address
+}
+🔁 Usage: u.Addr.City
+
+
+1️⃣4️⃣ Struct vs Class (Java Comparison)
+| Feature       | Go Struct | Java Class  |
+| ------------- | --------- | ----------  |
+| Inheritance   | ❌        | ✔          |
+| Methods       | ✔         | ✔          |
+| Encapsulation | ✔         | ✔          |
+| Constructors  | ❌        | ✔          |
+| Composition   | ✔         | ✔          |
+👉 Go prefers composition over inheritance.
+
+
+🔄 Struct Best Practices (Production)
+1️⃣ Use pointers for large structs
+func process(u *User)
+❌ Avoid copying big structs.
+
+
+2️⃣ Group related data
+❌ Bad:
+name string
+email string
+age int
+
+✅ Good: User struct
+
+
+3️⃣ Use struct tags for APIs
+✅ Example: json:"user_name"
+
+
+🔄 Questions on Structs
+❓ Are structs passed by value?
+─────────▶ Yes. Entire struct copy happens.
+
+❓ Why use pointer receivers?
+─────────▶ To modify original struct and avoid copying.
+
+❓ Can structs have methods?
+─────────▶ Yes.
+
+❓ Does Go support inheritance?
+─────────▶ No — uses composition.
+
+❓ Are structs comparable?
+─────────▶ Yes, if all fields are comparable.
+
+
+##############################
+🔷 Go Conditional Statements
+##############################
+➤ Conditional statements control decision making in programs.
+➤ They allow a program to execute different blocks of code depending on conditions.
+
+➤ In Go, the main conditional statement is: if
+➤ Go does not require parentheses like C/C++/Java.
+
+
+🔄 Basic if Statement
+🔗 Syntax
+if condition {
+    // code executed if condition is true
+}
+
+✅ Example
+package main
+
+import "fmt"
+
+func main() {
+
+    age := 20
+
+    if age >= 18 {
+        fmt.Println("Eligible to vote")
+    }
+}
+
+✅ Output
+Eligible to vote
+
+🔁 Key Points
+➤ condition must return boolean
+➤ No parentheses required
+➤ Curly braces {} are mandatory
+
+
+🔄 Go Does NOT Allow Non-Boolean Conditions
+➤ In languages like C: if(10)
+➤ But in Go: if 10 { } // ❌ Compile error
+➤ Correct: if true { }
+➤ Go forces strict boolean evaluation.
+
+
+3️⃣ if-else Statement
+Used when you want two alternative paths.
+
+🔗 Syntax
+if condition {
+    // executes if condition true
+} else {
+    // executes if condition false
+}
+
+✅ Example
+package main
+
+import "fmt"
+
+func main() {
+
+    num := 7
+
+    if num%2 == 0 {
+        fmt.Println("Even")
+    } else {
+        fmt.Println("Odd")
+    }
+}
+
+✅ Output
+Odd
+
+
+🔄 if-else-if Ladder
+Used when there are multiple conditions.
+
+🔗 Syntax
+if condition1 {
+
+} else if condition2 {
+
+} else if condition3 {
+
+} else {
+
+}
+
+
+✅ Example
+package main
+
+import "fmt"
+
+func main() {
+
+    marks := 85
+
+    if marks >= 90 {
+        fmt.Println("Grade A")
+    } else if marks >= 75 {
+        fmt.Println("Grade B")
+    } else if marks >= 50 {
+        fmt.Println("Grade C")
+    } else {
+        fmt.Println("Fail")
+    }
+}
+
+✅ Output
+Grade B
+
+
+🔄 Short Statement in if
+Go allows variable declaration inside if.
+
+🔗 Syntax
+if variable := expression; condition {
+}
+
+✅ Example
+package main
+
+import "fmt"
+
+func main() {
+
+    if num := 10; num%2 == 0 {
+        fmt.Println("Even:", num)
+    }
+}
+
+✅ Output
+Even: 10
+
+⚡Important Rule: The variable num is scoped only inside the if block.
+
+✅ Example:
+if num := 10; num > 5 {
+    fmt.Println(num)
+}
+
+fmt.Println(num) // ❌ error
+
+
+🔄 Using Function Calls in if
+✅ Example:
+func isAdult(age int) bool {
+    return age >= 18
+}
+
+func main() {
+
+    if isAdult(21) {
+        fmt.Println("Adult")
+    }
+}
+
+
+🔄 Nested if Statements
+An if inside another if.
+
+✅ Example:
+
+package main
+
+import "fmt"
+
+func main() {
+
+    age := 25
+    citizen := true
+
+    if age >= 18 {
+
+        if citizen {
+            fmt.Println("Eligible to vote")
+        }
+
+    }
+}
+
+✅ Output
+Eligible to vote
+
+
+🔄 Logical Operators in Conditions
+Often used inside if.
+| Operator | Meaning |   |    |
+| -------- | ------- | - | -- |
+| `&&`     | AND     |   |    |
+| `        |         | ` | OR |
+| `!`      | NOT     |   |    |
+
+✅ Example:
+age := 25
+salary := 60000
+
+if age > 21 && salary > 50000 {
+    fmt.Println("Loan approved")
+}
+
+
+🔄 Comparing Values
+Comparison operators used in conditions.
+| Operator | Meaning       |
+| -------- | ------------- |
+| `==`     | equal         |
+| `!=`     | not equal     |
+| `>`      | greater       |
+| `<`      | less          |
+| `>=`     | greater equal |
+| `<=`     | less equal    |
+
+✅ Example:
+x := 10
+y := 20
+
+if x < y {
+    fmt.Println("x is smaller")
+}
+
+
+🔄 if Without else
+Perfectly valid.
+
+if temperature > 30 {
+    fmt.Println("Hot weather")
+}
+
+
+🔄 Common Beginner Mistakes
+❌ Missing braces
+Invalid:
+if x > 10
+    fmt.Println("hello")
+
+✅ Correct:
+if x > 10 {
+    fmt.Println("hello")
+}
+
+
+❌ Using assignment instead of comparison
+if x = 10 { } // ❌
+
+✅ Correct:
+if x == 10 { }
+
+
+🔄 Backend Use case
+✅ Example: API authorization.
+
+func main() {
+
+    role := "admin"
+
+    if role == "admin" {
+        fmt.Println("Full access")
+    } else if role == "user" {
+        fmt.Println("Limited access")
+    } else {
+        fmt.Println("Guest access")
+    }
+}
+
+
+🔄 Performance Considerations
+✅ Best practices:
+    ✔️ Put most likely condition first
+    ✔️ Avoid deep nesting
+    ✔️ Use switch for many conditions
+
+✅ Example:
+❌ Bad: 10 nested if statements
+✔️ Better: switch statement
+
+
+🔄 Common Trap Questions
+❓ Does Go require parentheses in if?
+─────────▶ No. if x > 10 {}
+
+❓ Can we declare variables inside if?
+─────────▶ Yes. if x := 10; x > 5 {}
+
+❓ What is the scope of variables declared in if?
+─────────▶ Only inside the if block.
+
+❓ Can condition be non-boolean?
+─────────▶ No. Go requires boolean expression.
+
+
+#####################################################
+🔷 Understanding Code Blocks and Variable Shadowing
+#####################################################
+When writing Go programs, code blocks and variable shadowing are critical concepts that affect:
+    ✔️ variable scope
+    ✔️ memory visibility
+    ✔️ unexpected bugs
+    ✔️ readability of code
+👉 Many production bugs in Go happen due to variable shadowing, so understanding this deeply is very important.
+
+
+🔄 Code Block in Go
+➤ A code block is a section of code enclosed inside: { }
+➤ A block defines the scope of variables.
+
+✅ Example
+package main
+
+import "fmt"
+
+func main() {
+
+    x := 10
+
+    if x > 5 {
+        y := 20
+        fmt.Println(x, y)
+    }
+
+    fmt.Println(x)
+}
+
+✅ Output:
+10 20
+10
+👉 But: fmt.Println(y) // ❌ error
+
+❓ Why?
+➤ Because y exists only inside the block.
+
+
+🔄 Types of Code Blocks in Go
+Blocks are created in many places.
+
+1️⃣ Function block
+func main() {
+
+}
+
+2️⃣ If block
+if condition {
+
+}
+
+3️⃣ Loop block
+for i := 0; i < 10; i++ {
+
+}
+
+4️⃣ Switch block
+switch x {
+
+}
+
+5️⃣ Explicit block
+You can even create manual blocks.
+{
+    x := 10
+}
+
+
+🔄 Variable Scope in Go
+Scope means where a variable is accessible.
+3 main scopes
+| Scope          | Example               |
+| -------------- | --------------------- |
+| Package scope  | global variables      |
+| Function scope | variables in function |
+| Block scope    | variables inside `{}` |
+
+✅ Example
+var a = 10   // package scope
+
+func main() {
+
+    b := 20   // function scope
+
+    if true {
+        c := 30   // block scope
+        fmt.Println(a, b, c)
+    }
+
+}
+
+
+🔄 Variable Shadowing
+➤ Variable shadowing happens when a variable declared in an inner scope has the same name as a variable in an outer scope.
+➤ The inner variable hides (shadows) the outer one.
+
+✅ Example
+package main
+
+import "fmt"
+
+func main() {
+
+    x := 10
+
+    if true {
+        x := 20
+        fmt.Println("Inside:", x)
+    }
+
+    fmt.Println("Outside:", x)
+}
+
+✅ Output
+Inside: 20
+Outside: 10
+
+✅ Explanation:
+Outer x = 10
+Inner x = 20
+👉 They are different variables.
+
+
+🔄 Visual Representation
+main()
+ ├── x = 10
+ │
+ └── if block
+      └── x = 20 (shadows outer x)
+
+
+🔄 Shadowing With Short Variable Declaration :=
+Shadowing often happens with: :=
+
+✅ Example:
+x := 5
+
+if true {
+    x := x + 5
+    fmt.Println(x)
+}
+
+✅ Output
+10
+But outer x remains: 5
+
+
+🔄 Real Bug Example
+func getUser() (string, error) {
+    return "Ankur", nil
+}
+
+func main() {
+
+    user := "Guest"
+
+    if user, err := getUser(); err == nil {
+        fmt.Println(user)
+    }
+
+    fmt.Println(user)
+}
+
+✅ Output:
+Ankur
+Guest
+
+❓ Why?
+Because the user inside if shadows the outer variable.
+
+
+🔄 Shadowing With Error Variables
+✅ Example:
+file, err := os.Open("data.txt")
+
+if err != nil {
+    log.Fatal(err)
+}
+
+data, err := io.ReadAll(file)
+
+👉 This is fine.
+❗ But inside blocks:
+if data, err := io.ReadAll(file); err != nil {
+    fmt.Println(err)
+}
+👉 Now err is shadowed.
+
+
+🔄 Preventing Shadowing Bugs
+Use assignment instead of :=
+❌ Wrong: x := 10
+
+if condition {
+    x := 20
+}
+✅ Correct: x := 10
+
+if condition {
+    x = 20
+}
+
+
+🔄 Go Compiler Shadowing Behavior
+➤ Go allows shadowing intentionally.
+➤ Unlike some languages, it is not an error.
+➤ But tools like: go vet can warn about it.
+
+
+🔄 Shadowing With Loops
+✅ Example:
+x := 100
+
+for i := 0; i < 3; i++ {
+    x := i
+    fmt.Println(x)
+}
+fmt.Println(x)
+
+✅ Output:
+0
+1
+2
+100
+
+
+🔄 Shadowing vs Reassignment
+➤ Important difference: Shadowing
+➤ Creates new variable.
+
+x := 10
+{
+    x := 20
+}
+
+🔁 Reassignment
+Updates existing variable.
+x := 10
+
+{
+    x = 20
+}
+
+
+🔄 Best Practices
+1️⃣ Avoid reusing variable names
+Bad:
+x
+x
+x
+x
+
+2️⃣ Keep scopes small
+Short blocks reduce confusion.
+
+3️⃣ Use clear variable names
+✅ Example:
+userName
+dbUser
+apiUser
+
+
+🔄 Common Questions
+❓ What is variable shadowing?
+─────────▶ When a variable in inner scope hides a variable with same name in outer scope.
+
+❓ Does Go allow shadowing?
+─────────▶ Yes.
+
+❓ What operator usually causes shadowing?
+─────────▶ :=
+
+❓ How to avoid shadowing?
+─────────▶ Use: = instead of :=
