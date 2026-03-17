@@ -3762,3 +3762,485 @@ for loop
 
 ❓ Is break needed in switch?
 ─────────▶ No, Go switches automatically break.
+
+
+####################
+🔷 Switch Statement
+####################
+➤ Go’s switch is more flexible, cleaner, and safer than Java/C++ switch.
+➤ It supports:
+    ✔️ no break needed
+    ✔️ multiple conditions
+    ✔️ expression-less switch
+    ✔️ type switching (VERY IMPORTANT)
+    ✔️ fallthrough (optional)
+
+
+🔄 Basic Switch Statement
+🔗 Syntax
+switch expression {
+case value1:
+    // code
+case value2:
+    // code
+default:
+    // code
+}
+
+✅ Example
+package main
+import "fmt"
+
+func main() {
+
+    day := 2
+
+    switch day {
+    case 1:
+        fmt.Println("Monday")
+    case 2:
+        fmt.Println("Tuesday")
+    default:
+        fmt.Println("Other day")
+    }
+}
+✅ Output
+Tuesday
+
+🔄 No break Required
+👉 Unlike Java/C++:
+switch x {
+case 1:
+    fmt.Println("One")
+case 2:
+    fmt.Println("Two")
+}
+✔️ Automatically breaks after matching case
+✔️ No fall-through by default
+
+
+🔄 Multiple Values in Case
+num := 3
+switch num {
+case 1, 2, 3:
+    fmt.Println("Between 1 and 3")
+case 4, 5:
+    fmt.Println("Between 4 and 5")
+}
+
+
+🔄 Expression-less Switch
+You can omit the expression.
+
+marks := 85
+switch {
+case marks >= 90:
+    fmt.Println("Grade A")
+case marks >= 75:
+    fmt.Println("Grade B")
+case marks >= 50:
+    fmt.Println("Grade C")
+default:
+    fmt.Println("Fail")
+}
+👉 Works like if-else-if but cleaner.
+
+
+🔄 Short Statement in Switch
+Like if, you can declare variables inside switch.
+
+switch num := 10; {
+case num%2 == 0:
+    fmt.Println("Even")
+default:
+    fmt.Println("Odd")
+}
+
+
+🔄 fallthrough Keyword
+By default, Go does NOT fall through.
+To force it:
+
+x := 1
+switch x {
+case 1:
+    fmt.Println("One")
+    fallthrough
+case 2:
+    fmt.Println("Two")
+}
+✅ Output
+One
+Two
+
+👉 Rules
+➤ fallthrough ignores condition of next case
+➤ It just executes next block blindly
+
+
+🔄 Type Switch
+Used with interfaces.
+
+🔗 Syntax
+switch v := x.(type) {
+case int:
+case string:
+case bool:
+default:
+}
+Example
+package main
+import "fmt"
+
+func checkType(x interface{}) {
+
+    switch v := x.(type) {
+    case int:
+        fmt.Println("Integer:", v)
+    case string:
+        fmt.Println("String:", v)
+    default:
+        fmt.Println("Unknown type")
+    }
+}
+
+func main() {
+    checkType(10)
+    checkType("Hello")
+}
+
+
+🔄 Switch with Conditions
+age := 25
+switch {
+case age < 18:
+    fmt.Println("Minor")
+case age >= 18 && age < 60:
+    fmt.Println("Adult")
+default:
+    fmt.Println("Senior")
+}
+
+
+🔄 Switch vs If-Else
+| Feature             | switch | if-else |
+| ------------------- | ------ | ------- |
+| Multiple conditions | ✔      | ✔      |
+| Cleaner syntax      | ✔      | ❌     |
+| Range checks        | ✔      | ✔      |
+| Type checking       | ✔      | ❌     |
+
+
+🔄 Nested Switch
+x := 2
+y := 3
+switch x {
+case 2:
+    switch y {
+    case 3:
+        fmt.Println("x=2 and y=3")
+    }
+}
+
+
+🔄 Empty Switch (Always True)
+switch {
+case true:
+    fmt.Println("Always runs")
+}
+
+
+✅ Backend Example
+role := "admin"
+switch role {
+case "admin":
+    fmt.Println("Full access")
+case "user":
+    fmt.Println("Limited access")
+default:
+    fmt.Println("Guest")
+}
+
+
+🔄 Performance Insight
+➤ Faster than long if-else chains
+➤ Compiler may optimize into jump tables
+
+
+🔄 Common Trap Questions
+❓ Does Go switch need break?
+─────────▶ ❌ No — automatic
+
+❓ What is fallthrough?
+─────────▶ Forces execution of next case.
+
+❓ What is type switch?
+─────────▶ Used to check dynamic type of interface
+
+❓ Can switch work without expression?
+─────────▶ ✔ Yes
+
+❓ Difference between switch and if?
+─────────▶ Switch is cleaner for multiple conditions.
+
+
+🔁 Common Mistakes
+❌ Expecting fall-through
+case 1:
+case 2:
+Only one executes.
+
+❌ Misusing fallthrough
+Can cause unexpected behavior.
+
+
+###################
+🔷 Functions in Go
+###################
+➤ Functions are the core building block of any Go program.
+➤ Go treats functions as first-class citizens, meaning:
+    ✔️ You can pass functions as arguments
+    ✔️ Return functions from functions
+    ✔️ Store functions in variables
+
+
+🔄 Basic Function Syntax
+func functionName(parameters) returnType {
+    // logic
+}
+
+✅ Example
+package main
+import "fmt"
+
+func greet() {
+    fmt.Println("Hello, Go!")
+}
+
+func main() {
+    greet()
+}
+
+
+🔄 Function with Parameters
+func add(a int, b int) int {
+    return a + b
+}
+
+👉 Shorthand:
+func add(a, b int) int {
+    return a + b
+}
+
+
+🔄 Multiple Return Values
+Go supports returning multiple values natively.
+func divide(a, b int) (int, int) {
+    return a / b, a % b
+}
+
+🔗 Usage
+q, r := divide(10, 3)
+fmt.Println(q, r) // 3 1
+
+🔗 Real Use Case (Error Handling)
+func safeDivide(a, b int) (int, error) {
+    if b == 0 {
+        return 0, fmt.Errorf("cannot divide by zero")
+    }
+    return a / b, nil
+}
+
+
+🔄 Named Return Values
+func rectangle(l, w int) (area int, perimeter int) {
+    area = l * w
+    perimeter = 2 * (l + w)
+    return
+}
+👉 return without values uses named returns.
+
+
+🔄 Variadic Functions
+Accept variable number of arguments.
+
+func sum(nums ...int) int {
+    total := 0
+    for _, val := range nums {
+        total += val
+    }
+    return total
+}
+
+🔗 Usage
+fmt.Println(sum(1, 2, 3, 4)) // 10
+Passing Slice
+arr := []int{1, 2, 3}
+sum(arr...)   // unpack slice
+
+
+🔄 Functions as First-Class Citizens
+Assign to Variable
+add := func(a, b int) int {
+    return a + b
+}
+fmt.Println(add(2, 3))
+
+
+🔄 Pass Function as Argument
+func operate(a, b int, fn func(int, int) int) int {
+    return fn(a, b)
+}
+
+🔗 Return Function
+func multiplier(x int) func(int) int {
+    return func(y int) int {
+        return x * y
+    }
+}
+
+
+🔄 Anonymous Functions (Closures)
+Functions without name.
+
+func() {
+    fmt.Println("Anonymous function")
+}()
+
+✅ Closure Example
+func counter() func() int {
+    count := 0
+    return func() int {
+        count++
+        return count
+    }
+}
+
+🔗 Usage
+c := counter()
+fmt.Println(c()) // 1
+fmt.Println(c()) // 2
+👉 count is preserved → closure
+
+
+🔄 Recursion
+Function calling itself.
+
+func factorial(n int) int {
+    if n == 0 {
+        return 1
+    }
+    return n * factorial(n-1)
+}
+
+
+🔄 Defer Keyword
+defer delays execution until function ends.
+
+✅ Example
+func main() {
+    defer fmt.Println("World")
+    fmt.Println("Hello")
+}
+
+✅ Output
+Hello
+World
+
+
+🔄 Multiple Defer (LIFO Order)
+defer fmt.Println("1")
+defer fmt.Println("2")
+defer fmt.Println("3")
+
+Output:
+3
+2
+1
+
+🔗 Real Use Case
+file, _ := os.Open("file.txt")
+defer file.Close()
+
+
+🔄 Function Types
+You can define custom function types.
+type operation func(int, int) int
+
+
+🔄 Methods (Functions on Structs)
+type Person struct {
+    name string
+}
+
+func (p Person) greet() {
+    fmt.Println("Hello", p.name)
+}
+1️⃣2️⃣ Pointer vs Value Receiver
+func (p *Person) updateName(newName string) {
+    p.name = newName
+}
+
+👉 Pointer → modifies original
+👉 Value → copy
+
+1️⃣3️⃣ Error Handling Pattern
+
+Go uses functions + error return
+
+result, err := safeDivide(10, 0)
+
+if err != nil {
+    fmt.Println(err)
+}
+1️⃣4️⃣ init() Function
+
+Special function:
+
+func init() {
+    fmt.Println("Runs before main")
+}
+
+No arguments
+
+No return
+
+Auto-executed
+
+1️⃣5️⃣ Main Function
+
+Entry point:
+
+func main() {
+
+}
+🔥 Interview Questions
+Q1: Can Go return multiple values?
+
+✔ Yes (unique feature)
+
+Q2: What is closure?
+
+Function capturing outer variable.
+
+Q3: What is defer?
+
+Executes at function end (LIFO)
+
+Q4: Difference: Value vs Pointer receiver?
+Type	Behavior
+Value	copy
+Pointer	modify original
+Q5: Why Go doesn’t use exceptions?
+
+Uses error return pattern
+
+⚠️ Common Mistakes
+❌ Ignoring error
+result, _ := divide(10, 0)
+❌ Misusing defer in loop
+for i := 0; i < 3; i++ {
+    defer fmt.Println(i)
+}
+
+All run at end.

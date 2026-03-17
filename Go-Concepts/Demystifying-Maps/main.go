@@ -13,7 +13,7 @@ fmt.Println("Nil map:", m) // prints: Nil map: map[]
 // empty map
 emptyMap := make(map[string]int)
 fmt.Println("Empty map:", emptyMap) // prints: Empty map: map[]
-emptyMap["key"] = 100 // ✅ works fine
+emptyMap["key"] = 100 // works fine
 fmt.Println("Empty map after adding an entry:", emptyMap) // prints: Empty map after adding an entry: map[key:100]
 
 // map with initial capacity
