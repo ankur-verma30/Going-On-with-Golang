@@ -4062,7 +4062,9 @@ func rectangle(l, w int) (area int, perimeter int) {
 
 
 🔄 Variadic Functions
-Accept variable number of arguments.
+➤ Accept variable number of arguments.
+➤ The variadic parameters must be the final parameter of the function.
+➤ Within the function, these parameters are represented as a slice.
 
 func sum(nums ...int) int {
     total := 0
@@ -4176,71 +4178,296 @@ type Person struct {
 func (p Person) greet() {
     fmt.Println("Hello", p.name)
 }
-1️⃣2️⃣ Pointer vs Value Receiver
+
+
+🔄 Pointer vs Value Receiver
 func (p *Person) updateName(newName string) {
     p.name = newName
 }
-
 👉 Pointer → modifies original
 👉 Value → copy
 
-1️⃣3️⃣ Error Handling Pattern
 
+🔄 Error Handling Pattern
 Go uses functions + error return
-
 result, err := safeDivide(10, 0)
 
 if err != nil {
     fmt.Println(err)
 }
-1️⃣4️⃣ init() Function
 
+
+🔄 init() Function
 Special function:
-
 func init() {
     fmt.Println("Runs before main")
 }
+➤ No arguments
+➤ No return
+➤ Auto-executed
 
-No arguments
 
-No return
-
-Auto-executed
-
-1️⃣5️⃣ Main Function
-
+🔄 Main Function
 Entry point:
+func main() {}
 
-func main() {
 
-}
-🔥 Interview Questions
-Q1: Can Go return multiple values?
+🔄 Common Trap Questions
+❓ Can Go return multiple values?
+─────────▶ ✔ Yes (unique feature)
 
-✔ Yes (unique feature)
+❓ What is closure?
+─────────▶ Function capturing outer variable.
 
-Q2: What is closure?
+❓ What is defer?
+─────────▶ Executes at function end (LIFO)
 
-Function capturing outer variable.
+❓ Difference: Value vs Pointer receiver?
+| Type    | Behavior        |
+| ------- | --------------- |
+| Value   | copy            |
+| Pointer | modify original |
 
-Q3: What is defer?
+❓ Why Go doesn’t use exceptions?
+─────────▶ Uses error return pattern
 
-Executes at function end (LIFO)
-
-Q4: Difference: Value vs Pointer receiver?
-Type	Behavior
-Value	copy
-Pointer	modify original
-Q5: Why Go doesn’t use exceptions?
-
-Uses error return pattern
 
 ⚠️ Common Mistakes
 ❌ Ignoring error
 result, _ := divide(10, 0)
+
 ❌ Misusing defer in loop
 for i := 0; i < 3; i++ {
     defer fmt.Println(i)
 }
-
 All run at end.
+
+
+🔄 Default Params
+➤ Go lacks named or default parameters, a feature found in some other languages.
+➤ Aim to limit the number of parameters in a function to just a couple for clarity and simplicity.
+➤ When dealing with lengthy parameter lists or the need for optional values, consider utilizing a struct.
+
+✅ Example:
+func divide(a, b int) (int, error) {
+    if b == 0 {
+        return 0, errors.New("cannot divide by zero")
+    }
+    return a / b, nil
+}
+
+
+###############################
+🔷 First-Class Functions in Go
+###############################
+A function in Go can:
+➤ Be assigned to a variable
+➤ Be passed as an argument
+➤ Be returned from another function
+➤ Be stored in data structures (maps, slices)
+
+
+🔄 Assign Function to a Variable
+package main
+import "fmt"
+
+func add(a, b int) int {
+    return a + b
+}
+
+func main() {
+    var f func(int, int) int = add
+    fmt.Println(f(2, 3)) // 5
+}
+
+⚡ Key Insight
+➤ f holds reference to function
+➤ You can call it like normal function
+
+
+🔄 Anonymous Functions
+Functions without a name.
+
+package main
+import "fmt"
+
+func main() {
+
+    f := func(a, b int) int {
+        return a + b
+    }
+
+    fmt.Println(f(3, 4)) // 7
+}
+
+
+🔄 Immediate Invocation
+result := func(x int) int {
+    return x * x
+}(5)
+
+fmt.Println(result) // 25
+
+
+🔄 Passing Function as Argument (🔥 VERY IMPORTANT)
+package main
+import "fmt"
+
+func operate(a, b int, fn func(int, int) int) int {
+    return fn(a, b)
+}
+
+func add(a, b int) int {
+    return a + b
+}
+
+func multiply(a, b int) int {
+    return a * b
+}
+
+func main() {
+    fmt.Println(operate(2, 3, add))      // 5
+    fmt.Println(operate(2, 3, multiply)) // 6
+}
+
+
+🔄 Use Case
+➤ Strategy pattern
+➤ Dynamic behavior injection
+➤ Clean backend design
+
+
+🔄 Returning Functions
+package main
+import "fmt"
+
+func multiplier(x int) func(int) int {
+    return func(y int) int {
+        return x * y
+    }
+}
+
+func main() {
+    double := multiplier(2)
+    fmt.Println(double(5)) // 10
+}
+
+⚡ Key Insight
+➤ Outer function returns inner function
+➤ Inner function “remembers” x
+👉 This leads to closures
+
+
+🔄 Closures
+Function + captured variables from outer scope
+
+✅ Example
+package main
+import "fmt"
+
+func counter() func() int {
+    count := 0
+
+    return func() int {
+        count++
+        return count
+    }
+}
+
+func main() {
+    c := counter()
+    fmt.Println(c()) // 1
+    fmt.Println(c()) // 2
+}
+
+⚡ Key Concept
+➤ count is preserved between calls
+➤ Stored in heap (not stack)
+
+
+🔄 Function Types
+You can define custom function types.
+type operation func(int, int) int
+
+🔗 Usage
+func add(a, b int) int {
+    return a + b
+}
+var op operation = add
+fmt.Println(op(2, 3))
+
+
+🔄 Functions in Data Structures
+Map of Functions
+ops := map[string]func(int, int) int{
+    "add": func(a, b int) int { return a + b },
+    "mul": func(a, b int) int { return a * b },
+}
+fmt.Println(ops["add"](2, 3)) // 5
+
+
+🔗 Slice of Functions
+funcs := []func(int) int{
+    func(x int) int { return x + 1 },
+    func(x int) int { return x * 2 },
+}
+
+
+🔗 Real Backend Use Case: Middleware Pattern
+func logger(next func()) func() {
+    return func() {
+        fmt.Println("Logging before")
+        next()
+        fmt.Println("Logging after")
+    }
+}
+
+
+🔄 Functional Programming Style
+Go is not purely functional, but supports:
+    ✔️ Higher-order functions
+    ✔️ Closures
+    ✔️ Function composition
+
+
+🔟 Memory Insight
+➤ Functions are reference types
+➤ Closure variables escape to heap
+➤ Avoid large closures → memory overhead
+
+
+🔄 Common Mistakes
+❌ Loop Variable Capture Issue
+for i := 0; i < 3; i++ {
+    go func() {
+        fmt.Println(i)
+    }()
+}
+👉 Output unpredictable (closure captures same variable)
+
+✅ Fix
+for i := 0; i < 3; i++ {
+    i := i
+    go func() {
+        fmt.Println(i)
+    }()
+}
+
+
+🔄 Common Trap Questions
+❓ What are first-class functions?
+─────────▶ Functions treated as values.
+
+❓ What is a closure?
+─────────▶ Function capturing outer variables.
+
+❓ Where are closure variables stored?
+─────────▶ 👉 Heap (escape analysis)
+
+❓ Can functions be stored in maps?
+─────────▶ ✔ Yes
+
+❓ Difference: function vs method?
+| Function   | Method         |
+| ---------- | -------------- |
+| standalone | tied to struct |
