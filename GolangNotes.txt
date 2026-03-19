@@ -4137,7 +4137,15 @@ func factorial(n int) int {
 
 
 🔄 Defer Keyword
-defer delays execution until function ends.
+➤ defer delays execution until function ends.
+➤ Three conditions for deferred functions execution:
+    ✔️ Surrounding function returns
+    ✔️ Code execution reaches to the end of function body.
+    ✔️ Function panics
+➤ The deferred call's arguments are evaluated immediately, but the function call is not executed right away.
+➤ Multiple deferred functions are exectued in last in first out manner(LIFO).
+➤ Deferred functions are executed after any result parameter are set by that return statement but before the function returns to its caller.
+➤ Used for cleanup and handling panics and resource management.
 
 ✅ Example
 func main() {
@@ -4286,7 +4294,9 @@ func main() {
 
 
 🔄 Anonymous Functions
-Functions without a name.
+➤ These are like anonymous structs don't have a name.
+➤ They are useful for defining a small piece of functionality inline without the need to give it a name.
+➤ They are also used to provide callbacks.
 
 package main
 import "fmt"
@@ -4359,7 +4369,10 @@ func main() {
 
 
 🔄 Closures
-Function + captured variables from outer scope
+➤ Closures are functions that close over values
+➤ It captures the values from its surroundings scope usually a function block.
+➤ Closures keep access to the closed over variables even after the surrounding scope has been executed.
+➤ Closure can also been seen as function with state associated.
 
 ✅ Example
 package main
@@ -4471,3 +4484,8 @@ for i := 0; i < 3; i++ {
 | Function   | Method         |
 | ---------- | -------------- |
 | standalone | tied to struct |
+
+
+######################
+🔷 Pointers in Golang
+######################
