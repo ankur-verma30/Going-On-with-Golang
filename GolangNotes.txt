@@ -4489,3 +4489,823 @@ for i := 0; i < 3; i++ {
 ######################
 🔷 Pointers in Golang
 ######################
+➤ A pointer is a variable that stores the memory address of another variable
+➤ Instead of holding a value, it points to where the value is stored
+
+👉 Think:
+➤ Normal variable → stores value
+➤ Pointer → stores address of value
+
+
+❓ Why Go Uses Pointers
+Go is designed for performance + simplicity, so pointers help in:
+1️⃣ Avoid copying large data
+➤ Passing large structs → expensive (copy)
+➤ Passing pointer → cheap (only address)
+
+2️⃣ Modify original data
+Functions can change actual values (not copies)
+
+3️⃣ Efficient memory usage
+Less duplication → better performance
+
+
+🔗 Basic Syntax
+🔄 Declaring a Pointer
+var p *int
+➤ *int → pointer to an integer
+➤ p stores an address, not a value
+
+🔄 Getting Address (&)
+x := 10
+p := &x
+&x → "address of x"
+
+🔄 Dereferencing (*)
+fmt.Println(*p)
+*p → value at that address
+
+
+✅ Basic Example
+package main
+
+import "fmt"
+
+func main() {
+    x := 10
+    p := &x
+
+    fmt.Println("Value of x:", x)
+    fmt.Println("Address of x:", p)
+    fmt.Println("Value using pointer:", *p)
+}
+
+
+🔄 Changing Value Using Pointer
+package main
+
+import "fmt"
+
+func main() {
+    x := 10
+    p := &x
+
+    *p = 20
+
+    fmt.Println(x) // 20
+}
+
+💡 Key Insight:
+➤ *p = 20 changes the original variable
+➤ No copy involved
+
+
+🔄 Pass by Value vs Pass by Pointer
+❌ Pass by Value (Default in Go)
+func update(x int) {
+    x = 50
+}
+
+func main() {
+    a := 10
+    update(a)
+    fmt.Println(a) // 10 (unchanged)
+}
+
+
+✅ Pass by Pointer
+func update(x *int) {
+    *x = 50
+}
+
+func main() {
+    a := 10
+    update(&a)
+    fmt.Println(a) // 50
+}
+
+
+🔗 Pointers with Structs
+❌ Without Pointer (Copy happens)
+type User struct {
+    name string
+}
+
+func update(u User) {
+    u.name = "Ankur"
+}
+
+
+✅ With Pointer (Real-world usage)
+type User struct {
+    name string
+}
+
+func update(u *User) {
+    u.name = "Ankur"
+}
+
+func main() {
+    user := User{name: "John"}
+    update(&user)
+    fmt.Println(user.name) // Ankur
+}
+
+
+⚡ Shortcut (Go Feature)
+u.name = "Ankur"
+Even though u is *User, Go automatically dereferences it
+👉 No need to write: (*u).name = "Ankur"
+
+
+🔄 Memory Behavior
+👉 Stack vs Heap
+➤ Small variables → Stack
+➤ Large or escaping variables → Heap
+
+👉 When you use pointers:
+    ✔️ Data may escape to heap
+    ✔️ Managed by Go's Garbage Collector
+
+
+🔄 Escape Analysis
+Go compiler decides: Should variable stay in stack Or move to heap?
+
+
+🔗 Nil Pointer
+var p *int
+fmt.Println(p) // nil
+❌ Dereferencing nil → Crash
+fmt.Println(*p) // panic
+
+✅ Safe Check
+if p != nil {
+    fmt.Println(*p)
+}
+
+
+🔄 Common Mistakes
+❌ 1. Dereferencing nil pointer
+→ causes runtime panic
+
+❌ 2. Forgetting &
+update(a) // wrong
+update(&a) // correct
+
+❌ 3. Overusing pointers
+Makes code complex
+Not always needed
+
+
+🔄 When to Use Pointers
+✅ Use pointers when:
+    ✔️ You want to modify original data
+    ✔️ Struct is large
+    ✔️ Avoid copying (performance)
+    ✔️ Working with shared state
+
+❌ Avoid pointers when:
+    ✔️ Data is small (int, bool)
+    ✔️ You don’t need mutation
+    ✔️ Simplicity matters
+
+
+🔄 Go vs C/C++ Pointers
+| Feature            | Go            | C/C++     |
+| ------------------ | ------------- | --------- |
+| Pointer arithmetic |❌ Not allowed| ✅ Allowed|
+| Safety             | High          | Low       |
+| Garbage Collection | Yes           | No        |
+| Complexity         | Simple        | Complex   |
+👉 Go intentionally restricts pointers to keep things safe
+
+
+🔄 Real-World Backend Usage
+Pointers are heavily used in:
+    ✔️ HTTP handlers
+    ✔️ Database models
+    ✔️ JSON parsing
+    ✔️ Dependency injection
+    ✔️ Caching systems
+
+✅ Example:
+type Config struct {
+    DBUrl string
+}
+
+func loadConfig() *Config {
+    return &Config{DBUrl: "localhost"}
+}
+
+
+🔄 Common Trap Questions
+❓ Does Go support pointer arithmetic?
+─────────▶  ❌ No (for safety)
+
+❓ Are all variables passed by reference?
+─────────▶  ❌ No, Go is pass by value only, but pointers simulate reference behavior
+
+❓ What is nil pointer?
+─────────▶  Pointer with no assigned address
+
+❓ Why use pointers with structs?
+─────────▶  Avoid copying + allow modification
+
+
+##############################################################
+🔷 Call By Value | Unraveling the Mystery of Maps and Slices
+##############################################################
+➤ Go is 100% Call by Value — NO EXCEPTIONS
+➤ Every variable is copied when passed to a function
+➤ There is no pass-by-reference in Go
+
+
+🔗 Then Why Do Maps & Slices Behave Like Reference?
+Maps and slices internally contain pointers
+So when you pass them:
+    ✔️ You copy the structure
+    ✔️ But that structure contains a pointer to shared data
+👉 Result: Changes reflect outside the function
+
+
+🔄 Internal Structure
+1️⃣ Slice Internals
+A slice is NOT just an array. It is:
+type slice struct {
+    ptr *T   // pointer to underlying array
+    len int
+    cap int
+}
+👉 When you pass a slice:
+    ✔️ This struct is copied
+    ✔️ But ptr still points to SAME array
+
+
+2️⃣ Map Internals
+A map is:
+type hmap struct {
+    buckets *bucket
+    ...
+}
+👉 When you pass a map:
+    ✔️ Copy of map header
+    ✔️ But same underlying data (buckets)
+
+
+✅ Slice Example — Looks Like Reference
+package main
+
+import "fmt"
+
+func update(s []int) {
+    s[0] = 100
+}
+
+func main() {
+    arr := []int{1, 2, 3}
+    update(arr)
+
+    fmt.Println(arr) // [100 2 3]
+}
+
+❓ Why it changed?
+➤ Slice copy → same underlying array
+➤ s[0] modifies shared memory
+
+🔄 Slice Edge Case
+func update(s []int) {
+    s = append(s, 100)
+}
+👉 This may NOT affect original slice
+
+❓ Why?
+➤ If capacity exceeded → new array created
+➤ Now pointer changes → no longer shared
+
+✅ Correct Way (Return Slice)
+func update(s []int) []int {
+    s = append(s, 100)
+    return s
+}
+
+
+✅ Map Example — Always Feels Like Reference
+package main
+
+import "fmt"
+
+func update(m map[string]int) {
+    m["age"] = 25
+}
+
+func main() {
+    m := map[string]int{"age": 20}
+    update(m)
+
+    fmt.Println(m) // map[age:25]
+}
+
+❓ Why always works?
+➤ Map internally always points to shared structure
+➤ No "capacity reallocation" issue like slices
+
+
+🔄 Map Edge Case
+func update(m map[string]int) {
+    m = make(map[string]int)
+    m["age"] = 50
+}
+👉 Output: map[age:20]
+➤ You reassigned local copy
+➤ Original map untouched
+
+
+🔄 Slice vs Map Behavior
+| Operation          | Slice            | Map              |
+| ------------------ | ---------------- | ---------------- |
+| Modify element     | ✅ Reflects      | ✅ Reflects     |
+| Reassign variable  | ❌ No effect     | ❌ No effect    |
+| Append / Grow      | ⚠️ Maybe reflect | ✅ Always reflect |
+| Underlying storage | Array            | Hash buckets     |
+
+
+🔄 Deep Mental Model
+Everything is passed by value
+But:
+    ✔️ Slice → value contains pointer
+    ✔️ Map → value contains pointer
+👉 So: Pointer copied → still points to same memory
+
+
+🔄 Common Mistakes
+❌ Mistake 1: Thinking Go has pass-by-reference
+👉 ❌ WRONG
+
+❌ Mistake 2: Expecting append to always reflect
+👉 ❌ WRONG (depends on capacity)
+
+❌ Mistake 3: Reassigning map/slice inside function
+👉 ❌ Does NOT affect original
+
+
+✅ Real Backend Use Case
+Example: Updating request data
+func process(users []User) {
+    for i := range users {
+        users[i].Active = true
+    }
+}
+👉 Efficient:
+    ✔️ No copying of large structs
+    ✔️ Direct mutation
+
+
+🔄 Memory + Performance Insight
+➤ Slice copy → 24 bytes (ptr + len + cap)
+➤ Map copy → small header
+➤ Underlying data → NOT copied
+👉 This is why Go is:
+    ✔️ Fast
+    ✔️ Memory efficient
+
+
+######################
+🔷 Types and Methods
+######################
+➤ A type defines the structure and behavior of data
+➤ It tells:
+    ✔️ What data is stored
+    ✔️ What operations are allowed
+
+
+🔄 Categories of Types
+1️⃣ Basic Types: int, float64, string, bool
+2️⃣ Composite Types: array, slice, map, struct
+3️⃣ User-Defined Types: type UserID int
+👉 This creates a new distinct type, not just an alias
+
+
+🔄 Type vs Type Alias
+type A = int   // alias
+type B int     // new type
+
+| Feature            | Alias (`A`) | New Type (`B`) |
+| ------------------ | ----------- | -------------- |
+| Same as original   | ✅          | ❌            |
+| Can define methods | ❌          | ✅            |
+
+
+🔄 Struct Types (Go’s Replacement for Classes)
+type User struct {
+    Name string
+    Age  int
+}
+➤ Struct = collection of fields
+➤ No inheritance
+➤ Used as core building block in backend systems
+
+
+🔄 Methods in Go
+A method is a function attached to a type using a receiver
+
+🔗 Syntax
+func (receiver Type) methodName() returnType {
+    // logic
+}
+
+✅ Example
+type User struct {
+    Name string
+}
+
+func (u User) greet() string {
+    return "Hello " + u.Name
+}
+
+
+🔄 Receiver Types
+1️⃣ Value Receiver
+func (u User) updateName() {
+    u.Name = "Ankur"
+}
+
+❌ Problem:
+    ✔️ Works on a copy
+    ✔️ Original object unchanged
+
+
+2️⃣ Pointer Receiver
+func (u *User) updateName() {
+    u.Name = "Ankur"
+}
+
+🔁 Benefits:
+    ✔️ Modifies original object
+    ✔️ Avoids copying large structs
+
+
+✅ Example
+func main() {
+    u := User{Name: "John"}
+    u.updateName()
+    fmt.Println(u.Name) // Ankur
+}
+👉 Go automatically converts: u.updateName() → (&u).updateName()
+
+
+❓ When to Use Pointer vs Value Receiver
+1️⃣ Pointer Receiver
+➤ Need to modify data
+➤ Struct is large
+➤ Performance critical
+➤ Consistency across methods
+
+2️⃣ Value Receiver
+➤ Data is small (int, bool, small structs)
+➤ Immutable logic
+➤ Read-only operations
+
+
+🔄 Method Sets
+This determines which methods a type can call
+
+🔁 Rules
+| Type | Can Call                  |
+| ---- | ------------------------- |
+| `T`  | methods with receiver `T` |
+| `*T` | methods with `T` and `*T` |
+
+✅ Example
+type User struct{}
+
+func (u User) m1() {}
+func (u *User) m2() {}
+
+👉 Behavior
+var u User
+u.m1() // ✅
+u.m2() // ✅ (auto address)
+
+var p *User
+p.m1() // ✅
+p.m2() // ✅
+
+
+🔄 Methods on Custom Types
+type MyInt int
+
+func (m MyInt) square() int {
+    return int(m * m)
+}
+
+🔗 Usage
+var x MyInt = 5
+fmt.Println(x.square()) // 25
+
+
+🔄 Restrictions
+❌ Cannot define methods on: Built-in types directly
+func (i int) test() {} // ❌
+
+✅ Solution
+type MyInt int
+
+
+🔄 Methods vs Functions
+| Feature       | Method | Function |
+| ------------- | ------ | -------- |
+| Has receiver  | ✅    | ❌       |
+| Bound to type | ✅    | ❌       |
+| OOP behavior  | ✅    | ❌       |
+
+
+🔄 Internal Working
+Go compiler converts: u.greet()
+👉 Into: greet(u)
+👉 Methods are just syntactic sugar over functions
+
+
+🔄 Real Backend Example
+type Account struct {
+    Balance float64
+}
+
+func (a *Account) deposit(amount float64) {
+    a.Balance += amount
+}
+
+func (a *Account) withdraw(amount float64) {
+    if a.Balance >= amount {
+        a.Balance -= amount
+    }
+}
+
+
+🔗 Usage
+acc := Account{Balance: 1000}
+acc.deposit(500)
+acc.withdraw(200)
+
+
+🔄 Common Mistakes
+❌ Mixing receiver types
+Some methods pointer, some value → confusion
+
+❌ Using value receiver for large structs
+Causes unnecessary copying
+
+❌ Expecting value receiver to modify original
+It won’t
+
+
+🔄 Common Trap Questions
+❓ Does Go support OOP?
+─────────▶  Partially (no classes, uses structs + methods)
+
+❓ Why pointer receivers?
+─────────▶  Modify original + better performance
+
+❓ What is method set?
+─────────▶  Defines accessible methods for a type
+
+❓ Can methods exist without structs?
+─────────▶  ✅ Yes (custom types)
+
+🔄 Design Philosophy
+Go avoids:
+    ✔️ Inheritance
+    ✔️ Complex hierarchies
+
+Instead uses:
+    ✔️ Composition
+    ✔️ Interfaces
+    ✔️ Simple method binding
+
+👉 Leads to:
+    ✔️ Clean code
+    ✔️ Better scalability
+    ✔️ Easier debugging
+
+
+#################################
+🔷 Deriving Types and Using Iota
+#################################
+Creating new types based on existing ones to add type safety + behavior (methods)
+
+🔗 Basic Syntax
+type NewType ExistingType
+
+✅ Example
+type UserID int
+type OrderID int
+
+👉 Even though both are int underneath:
+    ✔️ UserID ≠ OrderID
+    ✔️ Prevents accidental misuse
+
+
+❓ Why This Matters
+Without derived types:
+func getUser(id int)
+func getOrder(id int)
+👉 You can accidentally pass wrong ID
+
+✅ With Derived Types
+func getUser(id UserID)
+func getOrder(id OrderID)
+👉 Compile-time safety ✅
+
+
+🔄 Type vs Alias
+type A = int   // alias
+type B int     // new derived type
+
+| Feature            | Alias | Derived Type |
+| ------------------ | ----- | ------------ |
+| New identity       | ❌   | ✅           |
+| Can define methods | ❌   | ✅           |
+| Type safety        | ❌   | ✅           |
+
+
+🔄 Methods on Derived Types
+👉 This is where deriving types becomes powerful
+
+type UserID int
+
+func (u UserID) String() string {
+    return fmt.Sprintf("UserID: %d", u)
+}
+
+🔗 Usage
+var id UserID = 101
+fmt.Println(id.String())
+
+
+🔄 Type Conversion (Important)
+Derived types require explicit conversion:
+
+var x int = 10
+var y UserID = UserID(x)
+👉 No implicit conversion → prevents bugs
+
+
+❓ What is iota?
+iota is a special constant generator used inside const blocks
+
+✅ Basic Example
+const (
+    A = iota // 0
+    B        // 1
+    C        // 2
+)
+
+⚡ Key Rule
+👉 iota:
+    ✔️ Starts at 0
+    ✔️ Increments by 1 per line
+
+
+✅ Real Example with Derived Type + iota
+type Status int
+
+const (
+    Pending Status = iota
+    Approved
+    Rejected
+)
+
+🔗 Usage
+var s Status = Approved
+fmt.Println(s) // 1
+
+
+❓ Why Use iota (Real Use Cases)
+✅ Enum-like behavior
+    ✔️ Status codes
+    ✔️ User roles
+    ✔️ Order states
+    ✔️ HTTP states (custom)
+
+
+🔗 Skipping Values
+const (
+    A = iota // 0
+    _
+    C        // 2
+)
+
+
+🔗 Custom Starting Value
+const (
+    A = iota + 1 // 1
+    B            // 2
+    C            // 3
+)
+
+
+🔄 Bitmasking
+const (
+    Read = 1 << iota  // 1
+    Write             // 2
+    Execute           // 4
+)
+
+
+👉 Explanation
+| Name    | Value |
+| ------- | ----- |
+| Read    | 1     |
+| Write   | 2     |
+| Execute | 4     |
+👉 Used in:
+    ✔️ Permissions
+    ✔️ Flags
+    ✔️ Feature toggles
+
+
+✅ Bitmask Usage Example
+perm := Read | Write
+
+if perm&Read != 0 {
+    fmt.Println("Read allowed")
+}
+
+
+🔄 Reset Behavior
+const (
+    A = iota // 0
+)
+
+const (
+    B = iota // 0 (reset)
+)
+
+
+🔄 Common Mistakes
+❌ Forgetting iota resets per block
+❌ Using iota outside const block 👉 ❌ Not allowed
+❌ Confusing with variables 👉 Only works in const
+
+
+🔄 Combining Derived Types + iota
+type Role int
+
+const (
+    Admin Role = iota
+    User
+    Guest
+)
+
+
+✅ Add String Method (Production-Level)
+func (r Role) String() string {
+    switch r {
+    case Admin:
+        return "Admin"
+    case User:
+        return "User"
+    case Guest:
+        return "Guest"
+    default:
+        return "Unknown"
+    }
+}
+
+
+✅ Real Backend Example
+type OrderStatus int
+
+const (
+    Created OrderStatus = iota
+    Paid
+    Shipped
+    Delivered
+    Cancelled
+)
+👉 Used in:
+    ✔️ E-commerce systems
+    ✔️ Microservices
+    ✔️ State machines
+
+
+🔄 Internal Insight
+➤ iota is evaluated at compile time
+➤ No runtime overhead
+➤ Generates constants efficiently
+
+
+🔄 Common Trap Questions
+❓ What is iota?
+─────────▶ Constant generator in Go
+
+❓ Can iota be used outside const?
+─────────▶ ❌ No
+
+❓ Does iota reset?
+─────────▶ Yes, per const block
+
+❓ Why use derived types with iota?
+─────────▶ Type safety + readable enums
+
+❓ How to start iota from 1?
+─────────▶ iota + 1
