@@ -5309,3 +5309,728 @@ const (
 
 ❓ How to start iota from 1?
 ─────────▶ iota + 1
+
+
+#########################################
+🔷 Embedding (Composition) and Promotion
+#########################################
+Embedding means including one struct inside another without naming it explicitly
+👉 This creates a "has-a" relationship, not "is-a"
+
+✅ Basic Example
+type Engine struct {
+    Power int
+}
+
+type Car struct {
+    Engine  // embedded struct
+    Brand string
+}
+
+✅ Usage
+func main() {
+    c := Car{
+        Engine: Engine{Power: 100},
+        Brand:  "BMW",
+    }
+
+    fmt.Println(c.Power) // 100 (promoted)
+}
+
+
+Promotion means accessing embedded fields/methods directly from outer struct
+
+🔁 Without Promotion (conceptually)
+c.Engine.Power
+
+🔁 With Promotion (actual usage)
+c.Power
+👉 Go automatically promotes fields/methods
+
+
+❓ Why Go Uses Composition Instead of Inheritance
+❌ Problems with Inheritance (Java/C++)
+➤ Tight coupling
+➤ Complex hierarchies
+➤ Diamond problem
+
+✅ Go Approach
+➤ Simple composition
+➤ Flexible design
+➤ No hidden behavior
+
+
+✅ Method Promotion Example
+type Engine struct {}
+
+func (e Engine) Start() {
+    fmt.Println("Engine started")
+}
+
+type Car struct {
+    Engine
+}
+Usage
+c := Car{}
+c.Start() // method promoted
+👉 Even though Start() belongs to Engine, Car can call it
+
+
+🔁 Internal Working
+When you write: c.Start()
+👉 Compiler interprets as: c.Engine.Start()
+
+
+🔄 Embedding vs Normal Field
+✔️ Normal Field
+type Car struct {
+    engine Engine
+}
+👉 Usage: c.engine.Power
+
+
+✔️ Embedded Field
+type Car struct {
+    Engine
+}
+👉 Usage: c.Power // promoted
+
+
+🔄 Name Conflict
+type A struct {
+    Value int
+}
+
+type B struct {
+    Value int
+}
+
+type C struct {
+    A
+    B
+}
+
+❌ Problem
+c.Value // ❌ ambiguous
+
+✅ Solution
+c.A.Value
+c.B.Value
+
+
+🔁 Multiple Embedding
+type Logger struct {}
+
+type Engine struct {}
+
+type Car struct {
+    Engine
+    Logger
+}
+👉 Car now has:
+    ✔️ Engine behavior
+    ✔️ Logging behavior
+
+
+🔄 Pointer vs Value Embedding
+1️⃣ Value Embedding
+type Car struct {
+    Engine
+}
+
+2️⃣ Pointer Embedding
+type Car struct {
+    *Engine
+}
+
+🔄 Key Difference
+| Type    | Behavior         |
+| ------- | ---------------- |
+| Value   | Copy of struct   |
+| Pointer | Shared reference |
+
+✅ Example
+c := Car{Engine: &Engine{}}
+c.Start()
+
+
+🔁 Method Sets with Embedding
+This is a top interview question
+
+Case:
+type Engine struct {}
+
+func (e *Engine) Start() {}
+
+Embedded in Car
+type Car struct {
+    Engine
+}
+
+Behavior
+var c Car
+c.Start() // ✅ works
+👉 Go automatically takes address: (&c.Engine).Start()
+
+
+✅ Real Backend Example
+Logging + Service Composition
+type Logger struct {}
+
+func (l Logger) Log(msg string) {
+    fmt.Println(msg)
+}
+
+type UserService struct {
+    Logger
+}
+Usage
+u := UserService{}
+u.Log("User created")
+👉 Clean reuse without inheritance
+
+
+🔄 Composition for Dependency Injection
+type DB struct {}
+
+type Service struct {
+    *DB
+}
+👉 Common in:
+    ✔️ Microservices
+    ✔️ Clean architecture
+
+
+🔄 Common Mistakes
+❌ Confusing composition with inheritance
+👉 Go does NOT support inheritance
+
+❌ Name conflicts in embedding
+👉 Leads to ambiguity
+
+❌ Overusing embedding
+👉 Makes code hard to read
+
+
+🔄 Common Trap Questions
+❓ Does Go support inheritance?
+─────────▶ ❌ No → uses composition
+
+❓ What is embedding?
+─────────▶ Including struct without field name
+
+❓ What is promotion?
+─────────▶ Accessing embedded fields/methods directly
+
+❓ How does Go resolve method calls?
+─────────▶ Through embedded structs
+
+❓ What happens in name conflict?
+─────────▶ Must use explicit path
+
+
+🌊 Design Philosophy
+Go prefers:
+    ✔️ Composition over inheritance
+    ✔️ Explicit over implicit
+    ✔️ Simplicity over magic
+
+
+###################################
+🔷 Understanding Interfaces in Go
+###################################
+➤ An interface is a collection of method signatures
+➤ It defines WHAT to do, not HOW to do it
+
+🔗 Syntax
+type InterfaceName interface {
+    Method1()
+    Method2()
+}
+
+✅ Example
+type Animal interface {
+    Speak() string
+}
+
+
+🔄 Implicit Implementation
+👉 Go does NOT use implements keyword
+A type automatically implements an interface if it has required methods
+
+✅ Example
+type Dog struct{}
+
+func (d Dog) Speak() string {
+    return "Woof"
+}
+👉 Dog automatically implements Animal
+
+🔗 Usage
+var a Animal
+a = Dog{}
+fmt.Println(a.Speak()) // Woof
+
+
+❓ Why Interfaces are Powerful
+✅ Decoupling: No dependency on concrete types
+✅ Flexibility: Easily swap implementations
+✅ Testability: Mock implementations for testing
+
+
+🔄 Polymorphism in Go
+type Animal interface {
+    Speak() string
+}
+
+type Dog struct{}
+type Cat struct{}
+
+func (Dog) Speak() string { return "Woof" }
+func (Cat) Speak() string { return "Meow" }
+
+🔗 Usage
+animals := []Animal{Dog{}, Cat{}}
+
+for _, a := range animals {
+    fmt.Println(a.Speak())
+}
+👉 Same interface → different behavior
+
+
+🔄 Interface Internals
+An interface is internally:
+
+type iface struct {
+    type  *typeInfo
+    value unsafe.Pointer
+}
+👉 It stores:
+    ✔️ Type
+    ✔️ Value
+
+
+🔄 Key Insight
+var a Animal = Dog{}
+
+👉 Interface contains:
+    ✔️ Type → Dog
+    ✔️ Value → {}
+
+
+🔁 Nil Interface Trap
+var a Animal
+fmt.Println(a == nil) // true
+
+❌ Confusing Case
+var d *Dog = nil
+var a Animal = d
+fmt.Println(a == nil) // false ❗
+
+
+❓ Why?
+Type = *Dog
+Value = nil
+👉 Interface is NOT nil
+
+
+🔄 Empty Interface (interface{})
+var x interface{}
+👉 Can hold any type
+
+✅ Example
+x = 10
+x = "hello"
+x = true
+
+🔗 Real Usage
+➤ JSON parsing
+➤ Generic containers
+➤ Logging systems
+
+
+🔄 Type Assertion
+➤ It is used to assert type for an empty interface
+➤ Type assertion is different from type conversion and can panic.
+🔗 Syntax
+value := x.(Type)
+
+✅ Example
+var x interface{} = "hello"
+str := x.(string)
+fmt.Println(str)
+
+⚠️ Safe Assertion
+str, ok := x.(string)
+
+if ok {
+    fmt.Println(str)
+}
+
+
+🔁 Type Switch
+➤ It can be used to check against multiple types
+➤ Type Assertion is done in the switch statement instead of switching on the value.
+➤ Inside each case the value will of that type if case matchesm otherwise remains empty interface type.
+
+🔗 Syntax
+switch v := x.(type) {
+case int:
+    fmt.Println("int", v)
+case string:
+    fmt.Println("string", v)
+default:
+    fmt.Println("unknown")
+}
+
+
+🔄 Interface Composition
+type Reader interface {
+    Read()
+}
+
+type Writer interface {
+    Write()
+}
+
+type ReadWriter interface {
+    Reader
+    Writer
+}
+👉 Combines multiple interfaces
+
+
+✅ Real Backend Example
+Database Abstraction
+type DB interface {
+    Save(data string) error
+}
+
+type MySQL struct{}
+type MongoDB struct{}
+
+func (MySQL) Save(data string) error {
+    fmt.Println("Saved in MySQL")
+    return nil
+}
+
+func (MongoDB) Save(data string) error {
+    fmt.Println("Saved in MongoDB")
+    return nil
+}
+
+🔗 Usage
+func process(db DB) {
+    db.Save("user data")
+}
+👉 Easily switch DBs without changing logic
+
+
+🔄 Best Practices
+✅ Keep interfaces SMALL
+type Reader interface {
+    Read()
+}
+👉 Not:
+type BigInterface interface {
+    Read()
+    Write()
+    Delete()
+    Update()
+}
+✅ Define interfaces where used (not where implemented)
+✅ Use interfaces for abstraction, not for everything
+
+
+🔄 Common Mistakes
+❌ Overusing empty interface
+👉 Leads to loss of type safety
+
+❌ Large interfaces
+👉 Hard to maintain
+
+❌ Ignoring nil interface behavior
+👉 Causes bugs
+
+
+🔄 Common Trap Questions
+❓ Does Go use explicit interface implementation?
+─────────▶  ❌ No (implicit)
+
+❓ What is empty interface?
+─────────▶  Holds any type
+
+❓ What is nil interface trap?
+─────────▶  Interface with type but nil value ≠ nil
+
+❓ Why small interfaces?
+─────────▶  Better flexibility and decoupling
+
+❓ How Go achieves polymorphism?
+─────────▶  Using interfaces
+
+
+🔄 Design Philosophy
+Go interfaces are:
+    ✔️ Implicit
+    ✔️ Lightweight
+    ✔️ Composable
+
+👉 This leads to:
+    ✔️ Loose coupling
+    ✔️ High scalability
+    ✔️ Clean architecture
+
+
+#####################################
+🔷 Mastering Error Handling in Go
+#####################################
+➤ Error handling in Go is explicit, predictable, and central to code quality.
+➤ There are no exceptions like in Java/Python—Go treats errors as values.
+➤ Errors are values → handle them explicitly → build reliable systems
+
+
+🔄 Core Philosophy
+➤ No try/catch
+➤ Errors are returned, not thrown
+➤ You must handle errors explicitly
+
+🔗 Basic Pattern
+result, err := someFunction()
+if err != nil {
+    // handle error
+}
+👉 This pattern appears everywhere in Go
+
+
+🔄 The error Type
+✅ Built-in Interface
+type error interface {
+    Error() string
+}
+👉 Any type implementing Error() is an error
+
+
+✅ Basic Example
+import "errors"
+
+func divide(a, b int) (int, error) {
+    if b == 0 {
+        return 0, errors.New("division by zero")
+    }
+    return a / b, nil
+}
+
+
+🔄 Creating Errors
+1️⃣ Using errors.New
+err := errors.New("something went wrong")
+
+2️⃣ Using fmt.Errorf
+err := fmt.Errorf("user %d not found", id)
+
+
+🔄 Custom Error Types
+✅ Example
+type NotFoundError struct {
+    Resource string
+}
+
+func (e NotFoundError) Error() string {
+    return e.Resource + " not found"
+}
+
+🔗 Usage
+return NotFoundError{Resource: "User"}
+
+
+❓ Why Custom Errors?
+➤ Add context
+➤ Structured error handling
+➤ Better debugging
+
+
+🔄 Error Wrapping (Go 1.13+)
+➤ Wrap errosrs to add additional information.
+➤ An error e wraps another error if e's type has one of the methods:
+1️⃣ Unwrap() error
+2️⃣ Unwrap() []error
+➤ An error chain refers to series of errors that are wrapped together.
+
+🔗 Using %w
+➤ Can use fmt.Errorf with %w to wrap errors.
+➤ If you don't want to wrap error but just want to add error from, use the %v placeholder in fmt.Errorf().
+err := fmt.Errorf("failed to fetch user: %w", originalErr)
+
+
+🔄 Using errors.Join
+➤ Go 1.20 introduced errors.Join() function to wrap multiple errors.
+➤ Join wraps provided error, discarding nil errors.
+➤ If all errors are nil, it returns nil.
+➤ A non-nil error returned by Join implements the Unwrap() []error method.
+errors.Join(err1, err2)
+
+
+🔄 Unwrapping
+➤ Standard lib errors package has Unwrap function to unwrap errors.
+➤ Unwrap calls the Unwrap method implemented on the error or returns nil.
+➤ fmt.Errorof() create error implements the Unwrap method.
+➤ Please note Unwrap does not unwrap errors returned by errors.Join().
+errors.Unwrap(err)
+
+
+🔄 Unwrapping Errors
+➤ If e.Unwrap() returns a non-nil error w or a slice containing w, then we say that e wraps w.
+➤ It is invalid for an Unwrap method to return an []error containing a nil error value.
+➤ A nil error returned from e.Unwrap() indicates that e does not wrap any error.
+
+
+🔄 Checking Errors
+1️⃣ errors.Is(err, targetErr)
+➤ This function accepts two parameters, the first is the error and the second the instance of error we are checking against.
+➤ Function signature: func Is(err, target error) bool
+➤ Iterate through the errors in the error chain and returns true  if matching error instance found.
+
+2️⃣ errors.As(err, &targetType)
+➤ This function accepts two parameters the first is the error and the second a non-nil pointer to either a type that implements error, or to any interface type.
+➤ Function signature: func As(err error, target interface{}) bool
+➤ Iterate through the errors in the error chain and matching target type, if found returns true and set the target to that error value.
+
+✅ Example
+if errors.Is(err, ErrNotFound) {
+    fmt.Println("Handle not found case")
+}
+
+
+🔄 Sentinel Errors
+➤ Indicate occurance of a unique events.
+➤ Exported package level variable.
+
+var ErrNotFound = errors.New("not found")
+
+🔗 Usage
+if errors.Is(err, ErrNotFound) {
+    // handle
+}
+
+
+🔄 Panic vs Error
+1️⃣ Error (Normal Flow)
+➤ Expected failure
+➤ Should be handled
+
+
+2️⃣ Panic (Exceptional)
+panic("something broke")
+
+👉 Used for:
+    ✔️ Programmer mistakes
+    ✔️ Critical failures
+
+
+🔄 Recover from Panic
+func safe() {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println("Recovered:", r)
+        }
+    }()
+}
+
+
+🔄 When to Use Panic
+✅ Use Panic:
+    ✔️ Invalid state
+    ✔️ Impossible conditions
+
+❌ Avoid Panic:
+    ✔️ User input errors
+    ✔️ Network/database failures
+
+
+🔄 Best Practices
+1️⃣ Always Handle Errors
+if err != nil {
+    return err
+}
+
+2️⃣ Add Context
+return fmt.Errorf("failed to load config: %w", err)
+
+3️⃣ Don’t Ignore Errors
+_ = someFunc() // ❌ bad practice
+
+4️⃣ Keep Errors Simple
+Avoid overengineering
+
+5️⃣ Return Early (Clean Code)
+if err != nil {
+    return err
+}
+
+
+✅ Real Backend Example
+func getUser(id int) (*User, error) {
+    user, err := db.Find(id)
+    if err != nil {
+        return nil, fmt.Errorf("db error: %w", err)
+    }
+
+    if user == nil {
+        return nil, ErrNotFound
+    }
+
+    return user, nil
+}
+
+
+🔄 Error Handling Pattern in Services
+func handler() {
+    user, err := getUser(1)
+    if err != nil {
+        log.Println(err)
+        return
+    }
+
+    fmt.Println(user)
+}
+
+
+🔄 Common Mistakes
+❌ Ignoring errors
+👉 Biggest mistake
+
+❌ Using panic everywhere
+👉 Not idiomatic Go
+
+❌ Not wrapping errors
+👉 Hard to debug
+
+❌ Comparing errors directly
+if err == ErrNotFound // ❌
+👉 Use: errors.Is(err, ErrNotFound)
+
+
+🔄 Trap Questions
+❓ Does Go have exceptions?
+─────────▶ ❌ No
+
+❓ What is error type?
+─────────▶ Interface with Error() method
+
+❓ Difference between panic and error?
+─────────▶ Panic = crash, Error = handle
+
+❓ What is error wrapping?
+─────────▶ Adding context using %w
+
+❓ How to check wrapped errors?
+─────────▶ errors.Is, errors.As
+
+
+🌊 Design Philosophy
+Go prefers:
+    ✔️ Explicit error handling
+    ✔️ Simplicity
+    ✔️ Predictability
+👉 No hidden control flow (like exceptions)
