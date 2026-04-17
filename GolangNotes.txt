@@ -5919,35 +5919,6 @@ if errors.Is(err, ErrNotFound) {
 ➤ Expected failure
 ➤ Should be handled
 
-
-2️⃣ Panic (Exceptional)
-panic("something broke")
-
-👉 Used for:
-    ✔️ Programmer mistakes
-    ✔️ Critical failures
-
-
-🔄 Recover from Panic
-func safe() {
-    defer func() {
-        if r := recover(); r != nil {
-            fmt.Println("Recovered:", r)
-        }
-    }()
-}
-
-
-🔄 When to Use Panic
-✅ Use Panic:
-    ✔️ Invalid state
-    ✔️ Impossible conditions
-
-❌ Avoid Panic:
-    ✔️ User input errors
-    ✔️ Network/database failures
-
-
 🔄 Best Practices
 1️⃣ Always Handle Errors
 if err != nil {
@@ -6034,3 +6005,919 @@ Go prefers:
     ✔️ Simplicity
     ✔️ Predictability
 👉 No hidden control flow (like exceptions)
+
+
+#####################
+🔷 Panic and Recover
+#####################
+This is Go’s controlled failure mechanism—used rarely but critically.
+
+➤ panic → stops normal execution
+➤ recover → catches panic and resumes control (only inside defer)
+
+Panic is a built-in function that stops the normal flow of execution and begins stack unwinding.
+
+✅ Example
+func main() {
+    panic("something went wrong")
+}
+
+
+❓ What Happens Internally?
+➤ Current function stops
+➤ Deferred functions execute
+➤ Stack unwinds (function by function)
+➤ Program crashes if not recovered
+
+
+🔄 Stack Unwinding
+func A() {
+    B()
+}
+
+func B() {
+    panic("error in B")
+}
+
+func main() {
+    A()
+}
+
+🔄 Execution Flow:
+1. B() panics
+2. B() exits → run its deferred calls
+3. Control returns to A() → run deferred calls
+4. Goes to main() → crash (if no recover)
+
+Recover is used to catch panics and regain control.
+
+⚠️ Important Rule
+recover works ONLY inside a deferred function
+
+🔄 Example
+func main() {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println("Recovered:", r)
+        }
+    }()
+
+    panic("something went wrong")
+}
+
+👉 Output: Recovered: something went wrong
+
+
+🔄 Panic + Recover Flow
+func safe() {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println("Recovered:", r)
+        }
+    }()
+
+    fmt.Println("Start")
+    panic("crash")
+    fmt.Println("End") // never runs
+}
+
+👉 Output:
+Start
+Recovered: crash
+
+
+🔄 Key Rules
+1️⃣ Recover only works in defer
+recover() // ❌ useless outside defer
+
+2️⃣ Panic stops execution immediately
+
+3️⃣ Deferred functions always run
+
+
+🔄 Panic 🆚 Error
+| Feature  | Error                      | Panic               |
+| -------- | -------------------------- | ------------------- |
+| Use case | Expected failures          | Unexpected failures |
+| Handling | Explicit (`if err != nil`) | Automatic unwinding |
+| Control  | Caller handles             | Runtime handles     |
+| Usage    | Common                     | Rare                |
+
+
+🔄 When to Use Panic
+
+✅ Valid Cases
+➤ Programmer errors
+➤ Invalid assumptions
+➤ Critical system failure
+
+❌ Avoid Panic For
+➤ User input errors
+➤ API failures
+➤ Database/network errors
+👉 Use error instead
+
+
+✅ Backend Example
+func recoverMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        defer func() {
+            if err := recover(); err != nil {
+                log.Println("Recovered from panic:", err)
+                http.Error(w, "Internal Server Error", 500)
+            }
+        }()
+
+        next.ServeHTTP(w, r)
+    })
+}
+👉 Prevents server crash
+
+
+
+🔄 Panic in Goroutines
+go func() {
+    panic("goroutine crash")
+}()
+👉 This will crash the whole program if not recovered
+
+
+✅ Safer Version
+go func() {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println("Recovered in goroutine:", r)
+        }
+    }()
+
+    panic("goroutine crash")
+}()
+
+
+🔄 Internal Insight
+➤ panic stores value (any type)
+➤ Runtime tracks panic stack
+➤ recover extracts panic value
+
+
+🔄 Multiple Defers Order
+func main() {
+    defer fmt.Println("1")
+    defer fmt.Println("2")
+    panic("error")
+}
+✅ Output: 
+2
+1
+panic: error
+👉 LIFO(Last In First Out)
+
+
+🔄 Common Mistakes
+❌ Using panic for normal flow
+👉 Bad practice
+
+❌ Calling recover outside defer
+👉 Won’t work
+
+❌ Ignoring panic in goroutines
+👉 Crashes app
+
+❌ Overusing panic
+👉 Makes code unpredictable
+
+
+🔄 Trap Questions
+Q1: What is panic?
+─────────▶ Stops execution and unwinds stack
+
+Q2: What is recover?
+─────────▶ Catches panic inside defer
+
+Q3: Can recover work outside defer?
+─────────▶ ❌ No
+
+Q4: What happens to deferred functions?
+─────────▶ Always executed
+
+Q5: Should panic be used for error handling?
+─────────▶ ❌ No (only for critical failures)
+
+
+🔄 Best Practices
+1️⃣ Use panic sparingly
+2️⃣ Always recover in:
+    ✔️ Goroutines
+    ✔️ HTTP servers
+3️⃣ Use middleware for recovery
+4️⃣ Prefer errors over panic
+
+
+#####################################
+🔷 Go Modules: Dependency Management
+#####################################
+➤ Go Modules are the official dependency management system in Go (introduced in Go 1.11, default after 1.13).
+➤ They replace the old GOPATH-based workflow.
+
+➤ A Go Module is a collection of Go packages stored in a directory tree with a go.mod file at its root.
+
+➤ A module defines:
+    ✔️ Project identity (module path)
+    ✔️ Dependencies
+    ✔️ Versions
+
+✅ Example go.mod
+module github.com/ankur/myapp
+
+go 1.22
+
+require (
+    github.com/gin-gonic/gin v1.9.0
+    github.com/go-sql-driver/mysql v1.7.1
+)
+
+
+❓ Why Go Modules Were Introduced
+❌ Problems with GOPATH
+➤ No version control
+➤ Global dependency conflicts
+➤ Hard to reproduce builds
+
+✅ Advantages of Modules
+➤ Versioned dependencies
+➤ Reproducible builds
+➤ No need for GOPATH
+➤ Works anywhere (outside GOPATH)
+
+
+🔄 Core Files
+1️⃣ go.mod
+Contains:
+    ✔️ Module name
+    ✔️ Go version
+    ✔️ Dependencies
+
+2️⃣ go.sum
+    ✔️ Stores checksums of dependencies
+    ✔️ Ensures integrity & security
+    ✔️ Similar to npm's package-lock.json
+    ✔️ It stores cryptographic hashes for specific modules versions.
+
+The go.mod and go.sum files together ensure that same moduel versions are downloaded every time.
+
+
+🔄 Basic Workflow
+Step 1️⃣: Initialize Module
+go mod init github.com/ankur/myapp
+👉 Creates go.mod
+
+
+Step 2️⃣: Add Dependency
+go get github.com/gin-gonic/gin
+Naming Convention: github.com/username/reponame
+👉 Updates:
+    ✔️ go.mod
+    ✔️ go.sum
+
+
+Step 3️⃣: Run Program
+go run main.go
+👉 Automatically downloads dependencies
+
+
+Step 4️⃣: Clean Dependencies
+go mod tidy
+👉 Removes unused deps + adds missing ones
+
+
+🔄 Versioning System (CRITICAL)
+Go uses Semantic Versioning (SemVer)
+
+📊 Format
+vMAJOR.MINOR.PATCH
+| Part  | Meaning          |
+| ----- | ---------------- |
+| MAJOR | Breaking changes |
+| MINOR | New features     |
+| PATCH | Bug fixes        |
+✅ Example: require github.com/gin-gonic/gin v1.9.0
+
+
+🔄 Important Commands
+➤ Download Dependencies
+🔗 go mod download
+
+➤  Verify Dependencies
+🔗 go mod verify
+
+➤  List Dependencies
+🔗 go list -m all
+
+➤  Update Dependency
+🔗 go get -u github.com/gin-gonic/gin
+
+➤  Remove Unused
+🔗 go mod tidy
+
+
+🔄 Internal Working
+📦 Where Dependencies Are Stored?
+👉 In module cache: $GOPATH/pkg/mod
+
+
+🔄 How Go Resolves Dependencies
+➤ Checks local cache
+➤ If not found → downloads from internet
+➤ Verifies checksum (go.sum)
+➤ Builds using exact version
+
+
+🔄 Replace Directive (ADVANCED)
+Used for local development or overriding deps
+
+✅ Example
+replace github.com/gin-gonic/gin => ../local/gin
+👉 Uses local version instead of remote
+
+
+🔄 Require vs Indirect
+1️⃣ Direct Dependency
+require github.com/gin-gonic/gin v1.9.0
+
+2️⃣ Indirect Dependency
+require github.com/some/lib v1.2.0 // indirect
+👉 Used internally by another dependency
+
+
+🔄 Version Selection (MVS)
+Go uses Minimal Version Selection (MVS)
+👉 Rule: Always picks the minimum required version that satisfies all dependencies
+
+❗ Important
+➤ No version conflicts like npm
+➤ Deterministic builds
+
+
+✅ Backend Example
+import (
+    "github.com/gin-gonic/gin"
+)
+👉 When you run: go run main.go
+👉 Go:
+    ✔️ Reads go.mod
+    ✔️ Downloads gin
+    ✔️ Uses exact version
+
+
+🔄 Vendoring
+🔗 go mod vendor
+👉 Copies dependencies into /vendor
+
+❓Why Use?
+➤ Offline builds
+➤ Strict dependency control
+
+
+🔄 Common Mistakes
+❌ Not running go mod tidy
+👉 Leads to messy dependencies
+
+❌ Editing go.mod manually incorrectly
+👉 Can break builds
+
+❌ Ignoring go.sum
+👉 Security risk
+
+❌ Using latest blindly
+👉 Can break production
+
+
+🔄 Trap Questions
+❓ What is Go Module?
+─────────▶  Dependency management system with versioning
+
+❓ What is go.mod?
+─────────▶  Defines module + dependencies
+
+❓ What is go.sum?
+─────────▶  Stores checksums for integrity
+
+❓ What is MVS?
+─────────▶  Minimal Version Selection
+
+❓ Where are dependencies stored?
+─────────▶  $GOPATH/pkg/mod
+
+❓ What does go mod tidy do?
+─────────▶  Cleans and syncs dependencies
+
+
+🔄 Best Practices
+1️⃣ Always commit:
+    ✔️ go.mod
+    ✔️ go.sum
+2️⃣ Run go mod tidy before pushing
+3️⃣ Use fixed versions (avoid latest)
+4️⃣ Use replace for local dev only
+5️⃣ Avoid unnecessary dependencies
+
+
+❓ Why Go Modules are Powerful
+➤ No dependency hell (unlike Node)
+➤ Deterministic builds
+➤ Simple and fast
+
+🔄 Real Systems Using This
+➤ Kubernetes
+➤ Docker
+➤ Terraform
+
+
+######################
+🔷 Packages in Golang
+######################
+➤ A package in Go is a namespace + collection of related Go files.
+➤ It helps in:
+    ✔️ Code organization
+    ✔️ Reusability
+    ✔️ Encapsulation
+👉 Every Go program must belong to a package.
+
+
+🔄 Types of Packages
+1️⃣ Executable Package (main)
+➤ Special package that creates an executable program
+➤ Must contain a main() function
+
+package main
+
+import "fmt"
+func main() {
+    fmt.Println("Hello, Go")
+}
+
+👉 Rules:
+    ✔️ Package name must be main
+    ✔️ Entry point = main()
+
+
+2️⃣ Library Packages
+➤ Reusable code
+➤ Cannot run directly
+package mathutils
+
+func Add(a, b int) int {
+    return a + b
+}
+
+
+🔄 Package Declaration Rules
+➤ First line in every .go file: package <name>
+➤ All files in the same directory must have the same package name
+
+❌ Wrong:
+file1.go → package utils
+file2.go → package main
+
+
+🔄 Importing Packages
+1️⃣ Standard Library
+import "fmt"
+
+2️⃣ Multiple Imports
+import (
+    "fmt"
+    "math"
+)
+
+3️⃣ Custom Packages
+import "myproject/mathutils"
+
+4️⃣ Alias Import
+import m "math"
+fmt.Println(m.Sqrt(16))
+
+✅ Blank Identifier (Side Effects)
+import _ "some/package"
+➤ Used when package init() is needed but not its functions
+
+
+🔄 Exported vs Unexported
+👉 Go uses capitalization for access control
+
+1️⃣ Exported (Public)
+➤ Starts with uppercase
+func Add() {}
+👉 Accessible from other packages
+
+
+❌ Unexported (Private)
+👉 Starts with lowercase
+func add() {}
+➤ Accessible only within same package
+
+⚠️ Interview Trap
+➤ Go does NOT use public/private/protected
+➤ Uses naming convention only
+
+
+🔄 Package Structure (Real Project)
+myproject/
+│
+├── go.mod
+├── main.go
+│
+├── mathutils/
+│   └── add.go
+│
+└── stringutils/
+    └── reverse.go
+
+✅ Example:
+mathutils/add.go
+
+package mathutils
+
+func Add(a, b int) int {
+    return a + b
+}
+
+🔗 main.go
+package main
+
+import (
+    "fmt"
+    "myproject/mathutils"
+)
+
+func main() {
+    fmt.Println(mathutils.Add(2, 3))
+}
+
+🔄 Special Functions in Packages
+🔗 init() Function
+➤ Automatically executed when package is imported
+➤ No arguments, no return
+func init() {
+    fmt.Println("Package initialized")
+}
+
+
+🔄 Key Properties
+➤ Runs before main()
+➤ Can have multiple init() functions
+➤ Execution order = dependency order
+
+
+🔄 Go Modules (Dependency Management)
+👉 Modern Go uses modules
+🔗 go mod init myproject
+    ➤ Creates go.mod
+    ➤ Defines module path
+🔗 module myproject
+👉 This path is used in imports: import "myproject/mathutils"
+
+
+🔄 Standard Library Packages
+➤ fmt → I/O
+➤ math → math operations
+➤ strings → string manipulation
+➤ time → time handling
+➤ os → OS interaction
+
+
+🔄 Internal Working
+👉 Compilation Model
+➤ Go compiles package by package
+➤ Each package → compiled separately → reused
+
+👉 Benefits:
+➤ Faster builds
+➤ Better modularity
+
+
+🔄 Dependency Graph
+➤ Go builds a DAG (Directed Acyclic Graph) of packages
+➤ No circular dependencies allowed ❌
+
+❌ Circular Dependency Example
+A → B
+B → A  ❌ NOT ALLOWED
+
+
+🔄 Common Mistakes
+❌ 1. Wrong Export Usage
+func add() {} // can't access outside
+
+❌ 2. Incorrect Import Path
+Must match go.mod module path
+
+❌ 3. Circular Dependencies
+
+Leads to compile-time error
+❌ 4. Mixing Packages in Same Folder
+Not allowed
+
+
+🔄 Best Practices
+➤ Keep packages small and focused
+➤ One responsibility per package
+➤ Avoid deep nesting
+➤ Use meaningful names (auth, db, utils ❌ too generic sometimes)
+
+
+🔄 Trap Questions
+❓ Difference between package main and other packages?
+➤ main → executable
+➤ others → reusable libraries
+
+❓ How does Go handle access control?
+─────────▶ Capitalization (exported vs unexported)
+
+❓ What is init() function?
+─────────▶ Auto-executed setup function before main
+
+❓ Can a package have multiple init() functions?
+─────────▶ Yes
+
+❓ Why no circular dependencies?
+─────────▶ Keeps dependency graph simple and compilation fast
+
+
+🔄 Advanced Insight
+➤ Go encourages composition over inheritance
+➤ Packages act as modular boundaries
+➤ Encourages clean architecture (like microservices mindset)
+
+
+
+#######################################
+🔷 Different Project Structures in Go
+#######################################
+➤ Go does not enforce a strict project structure. Instead, it follows:“Convention over configuration” + simplicity
+➤ But in real-world systems, a few standard patterns are widely used.
+
+
+1️⃣ Flat Structure (Beginner / Small Projects)
+📁 Structure
+myapp/
+├── go.mod
+├── main.go
+├── utils.go
+├── db.go
+
+🌊 Characteristics
+➤ All files in one package (main)
+➤ No separation of concerns
+➤ Quick to start
+
+❌ Problems
+➤ Becomes messy as project grows
+➤ No modularity
+➤ Hard to test
+
+✅ Use Case
+➤ Learning Go
+➤ Small scripts / CLI tools
+
+
+2️⃣ Package-Based Structure (Basic Modular Design)
+📁 Structure
+myapp/
+├── go.mod
+├── main.go
+│
+├── handlers/
+│   └── user.go
+│
+├── services/
+│   └── user_service.go
+│
+├── models/
+│   └── user.go
+│
+└── utils/
+    └── helper.go
+
+👉 Key Idea
+Divide code into logical packages
+
+🔥 Flow (Typical Backend)
+main → handlers → services → models
+
+🔁 Advantages
+➤ Better organization
+➤ Reusable components
+➤ Easy to scale
+
+❌ Drawbacks
+➤ Weak boundaries (packages can tightly couple)
+➤ No strict architecture rules
+
+✅ Use Case
+➤ Small–medium backend apps
+➤ Beginner transitioning to real projects
+
+
+3️⃣ Layered Architecture (Most Common in Backend)
+📁 Structure
+myapp/
+├── cmd/
+│   └── app/
+│       └── main.go
+│
+├── internal/
+│   ├── handler/
+│   ├── service/
+│   ├── repository/
+│   └── model/
+│
+├── pkg/
+│   └── utils/
+│
+└── go.mod
+
+🔄 Folder Meaning
+🔗 cmd/
+➤ Entry points
+➤ Each app gets its own folder
+
+🔗 internal/
+➤ Private application code
+➤ Cannot be imported outside module
+👉 Go enforces this restriction
+
+🔗 pkg/
+➤ Public reusable code
+➤ Can be used by other projects
+
+
+🔁 Layer Responsibilities
+1️⃣ Handler Layer
+    ✔️ HTTP / API handling
+    ✔️ Input parsing
+2️⃣ Service Layer
+    ✔️ Business logic
+3️⃣ Repository Layer
+    ✔️ DB interaction
+4️⃣ Model Layer
+    ✔️ Data structures
+
+
+🔁 Advantages
+➤ Clean separation of concerns
+➤ Scalable architecture
+➤ Industry standard
+
+❌ Drawbacks
+➤ Slight boilerplate
+➤ Can be overkill for small apps
+
+✅ Use Case
+➤ REST APIs
+➤ Production backend systems
+
+
+4️⃣ Domain-Driven Design (DDD) Structure (Advanced)
+📁 Structure
+myapp/
+├── cmd/
+├── internal/
+│   ├── user/
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── repository.go
+│   │   └── model.go
+│   │
+│   ├── order/
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── repository.go
+│   │   └── model.go
+│
+└── go.mod
+
+🔥 Key Idea
+👉 Structure by feature/domain, not by layer
+
+
+🔁 Advantages
+➤ High cohesion
+➤ Easy to scale large systems
+➤ Microservice-friendly
+
+❌ Drawbacks
+➤ Harder for beginners
+➤ Requires design thinking
+
+✅ Use Case
+➤ Large applications
+➤ Microservices
+➤ System design-heavy projects
+
+5️⃣ Clean Architecture
+📁 Structure
+myapp/
+├── cmd/
+├── internal/
+│   ├── domain/        # Entities
+│   ├── usecase/       # Business logic
+│   ├── delivery/      # HTTP / gRPC
+│   └── repository/    # DB layer
+│
+└── go.mod
+
+🔥 Core Principle
+➤ Dependency flows inward
+➤ Delivery → Usecase → Domain
+
+
+🔁 Advantages
+➤ Highly testable
+➤ Decoupled components
+➤ Scalable & maintainable
+
+❌ Drawbacks
+➤ Verbose
+➤ Overengineering for small apps
+
+✅ Use Case
+➤ Enterprise systems
+➤ High-scale backend
+
+
+6️⃣ Microservices Structure
+📁 Structure
+project/
+├── user-service/
+│   ├── cmd/
+│   ├── internal/
+│   └── go.mod
+│
+├── order-service/
+│   ├── cmd/
+│   ├── internal/
+│   └── go.mod
+🔥 Key Idea
+Each service = independent Go module
+
+🔥 Benefits
+➤ Independent deployment
+➤ Scalability
+
+
+7️⃣ Standard Go Project Layout
+👉 Popular repo: golang-standards/project-layout
+
+📁 Structure
+myapp/
+├── cmd/
+├── internal/
+├── pkg/
+├── api/
+├── configs/
+├── scripts/
+├── test/
+└── go.mod
+
+
+🔄 Common Mistakes
+❌ Overengineering early
+Using Clean Architecture for small app
+
+❌ Too many packages
+Leads to fragmentation
+
+❌ Circular dependencies
+Compile-time error
+
+❌ Putting everything in pkg/
+Misuse of public API
+
+
+🔄 Best Practices (Production-Level)
+➤ Start simple → evolve structure
+➤ Prefer internal/ for app logic
+➤ Keep packages:
+    ✔️ Small
+    ✔️ Focused
+➤ Avoid deep nesting
+➤ Name packages by responsibility
+
+
+🔄 Trap Questions
+❓ Does Go enforce project structure?
+─────────▶ No, it’s convention-based
+
+❓ What is internal/ folder?
+─────────▶ Private code, not importable outside module
+
+❓ Difference between pkg/ and internal/?
+─────────▶ pkg/ → reusable public code
+           internal/ → private app code
+
+❓ Which structure should you use?
+─────────▶ Depends on project size:
+            ✔️ Small → Flat / Package-based
+            ✔️ Medium → Layered
+            ✔️ Large → DDD / Clean Architecture
