@@ -6921,3 +6921,666 @@ Misuse of public API
             ✔️ Small → Flat / Package-based
             ✔️ Medium → Layered
             ✔️ Large → DDD / Clean Architecture
+
+
+#####################################
+🔷 io.Reader and io.Writer in Go
+#####################################
+👉 Go treats everything as a stream of bytes
+➤ File → stream of bytes
+➤ Network → stream of bytes
+➤ HTTP request → stream of bytes
+
+➡️ io.Reader = source of data
+➡️ io.Writer = destination of data
+
+
+🔄 io.Reader Interface
+type Reader interface {
+    Read(p []byte) (n int, err error)
+}
+
+🔥 How It Works
+➤ You give it a byte slice buffer (p)
+➤ It fills it with data
+➤ Returns:
+    ✔️ n → number of bytes read
+    ✔️ err → error (or io.EOF when finished)
+
+✅ Example: Reading from a string
+package main
+
+import (
+    "fmt"
+    "strings"
+)
+
+func main() {
+    r := strings.NewReader("Hello Go")
+
+    buf := make([]byte, 4)
+
+    for {
+        n, err := r.Read(buf)
+        if err != nil {
+            break
+        }
+        fmt.Println(string(buf[:n]))
+    }
+}
+✅ Output
+Hell
+o Go
+
+
+🔄 Common Implementations
+1️⃣ *os.File: used to read data from a file.
+2️⃣ strings.Reader: used to read data from a string.
+3️⃣ bufio.Reader: implements Read for imporved performance, using buffers for reading.
+4️⃣ http.Request.Body: allows you to supply the request body via reader.
+5️⃣ bytes.Buffer: used for reading from in-memory byte buffers.
+
+
+⚠️ Important Behavior
+➤ Read() may return less data than buffer size
+➤ Must always use: buf[:n]
+
+
+🔄 io.Writer Interface
+type Writer interface {
+    Write(p []byte) (n int, err error)
+}
+
+🔥 How It Works
+➤ You pass data ([]byte)
+➤ Writer writes it somewhere
+➤ Returns:
+    ✔️ n → bytes written
+    ✔️ err → error if failed
+➤ If written bytes are less than the provided bytes, you should return an error.
+➤ Provided slice of byte is a source of writing and should not be modified.
+
+✅ Example: Writing to buffer
+package main
+
+import (
+    "bytes"
+    "fmt"
+)
+
+func main() {
+    var b bytes.Buffer
+
+    b.Write([]byte("Hello "))
+    b.Write([]byte("Go"))
+
+    fmt.Println(b.String())
+}
+✅ Output
+Hello Go
+
+
+🔄 Real Power: Composition
+👉 Many types implement these interfaces:
+| Type               | Implements      |
+| ------------------ | --------------- |
+| `os.File`          | Reader + Writer |
+| `strings.Reader`   | Reader          |
+| `bytes.Buffer`     | Reader + Writer |
+| HTTP Body          | Reader          |
+| Network Connection | Reader + Writer |
+
+🔥 This Enables:
+👉 Generic functions
+func process(r io.Reader) {
+    // works with file, network, string, etc.
+}
+
+
+🔄 io.Copy
+func Copy(dst Writer, src Reader) (written int64, err error)
+
+✅ Example
+package main
+
+import (
+    "io"
+    "os"
+    "strings"
+)
+
+func main() {
+    r := strings.NewReader("Hello Go")
+    io.Copy(os.Stdout, r)
+}
+✅ Output
+Hello Go
+
+🔥 Insight
+➤ No need to manually loop
+➤ Handles buffering internally
+➤ Used everywhere in real systems
+
+
+🔄 EOF Handling
+❗ io.EOF
+➤ Means no more data
+➤ Not always an error condition
+
+✅ Correct Pattern
+if err == io.EOF {
+    break
+}
+if err != nil {
+    // handle real error
+}
+
+
+🔄 Common Reader/Writer Utilities
+1️⃣ bufio (Buffered I/O)
+reader := bufio.NewReader(os.Stdin)
+writer := bufio.NewWriter(os.Stdout)
+👉 Improves performance
+
+2️⃣ io.ReadAll
+data, _ := io.ReadAll(r)
+
+3️⃣ io.ReadFull
+Reads exactly N bytes
+
+4️⃣ io.MultiReader
+Combine multiple readers
+
+5️⃣ io.MultiWriter
+Write to multiple destinations
+
+
+🔄 Custom Reader Implementation
+👉 You can create your own reader
+
+✅ Example:
+type MyReader struct{}
+
+func (m MyReader) Read(p []byte) (int, error) {
+    p[0] = 'A'
+    return 1, nil
+}
+
+🔥 Use Case
+➤ Streaming data
+➤ Custom protocols
+➤ Mocking in tests
+
+
+🔄 Internal Working
+1️⃣ Why Interfaces?
+➤ Go avoids inheritance
+➤ Uses interface-based design
+
+2️⃣ Memory Efficiency
+➤ Works with byte slices
+➤ Avoids copying large data
+
+3️⃣ Streaming Nature
+➤ Processes data chunk by chunk
+➤ No need to load entire data in memory
+
+
+🔄 Common Mistakes
+❌ Ignoring n: string(buf) // WRONG
+❌ Not handling EOF properly
+❌ Assuming full buffer fill
+❌ Using ReadAll on large data: Can cause memory issues
+
+
+🔄 Best Practices
+➤ Always check n
+➤ Use io.Copy when possible
+➤ Prefer streaming over full load
+➤ Use buffered I/O for performance
+
+
+🔄 Trap Questions
+❓ Why is io.Reader important?
+─────────▶ Standard abstraction for all input sources
+
+❓ Why does Read take a buffer?
+─────────▶ Avoids memory allocation → performance
+
+❓ Can Read return partial data?
+─────────▶ Yes
+
+❓ Difference between Reader and Writer?
+─────────▶ Reader → input
+Writer → output
+
+❓ What is io.Copy?
+─────────▶ Utility to copy from Reader → Writer efficiently
+
+
+##################################################
+🔷 JSON Marshal, Unmarshal, and Encoding/Decoding
+##################################################
+👉 Go uses the encoding/json package
+➤ Marshal → Go struct ➝ JSON
+➤ Unmarshal → JSON ➝ Go struct
+➤ Encoder/Decoder → Stream-based JSON processing (I/O based)
+
+
+🔄 JSON Marshal (Struct ➝ JSON)
+🔗 Function
+func Marshal(v interface{}) ([]byte, error)
+
+✅ Example
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+)
+
+type User struct {
+    Name string
+    Age  int
+}
+
+func main() {
+    u := User{Name: "Ankur", Age: 22}
+
+    data, _ := json.Marshal(u)
+    fmt.Println(string(data))
+}
+✅ Output: {"Name":"Ankur","Age":22}
+
+⚠️ Important Rules: Only exported fields are marshaled (Name ✅, name ❌)
+
+
+🔄 Struct Tags
+👉 Control JSON output
+
+type User struct {
+    Name string `json:"name"`
+    Age  int    `json:"age,omitempty"`
+}
+
+
+🔁 Tag Features
+➤ json:"name" → rename field
+➤ omitempty → skip if zero value
+➤ - → ignore field
+
+✅ Example
+type User struct {
+    Name string `json:"name"`
+    Age  int    `json:"-"`
+}
+
+
+🔄 JSON Unmarshal (JSON ➝ Struct)
+🔗 Function
+func Unmarshal(data []byte, v interface{}) error
+
+✅ Example
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+)
+
+type User struct {
+    Name string
+    Age  int
+}
+
+func main() {
+    jsonData := []byte(`{"Name":"Ankur","Age":22}`)
+
+    var u User
+    json.Unmarshal(jsonData, &u)
+
+    fmt.Println(u.Name, u.Age)
+}
+
+⚠️ VERY IMPORTANT
+Must pass pointer: json.Unmarshal(data, &u) // ✅
+
+
+🔄 Handling Unknown / Dynamic JSON
+👉  Using map[string]interface{}
+var data map[string]interface{}
+json.Unmarshal(jsonBytes, &data)
+
+⚠️ Type Assertions Needed
+name := data["name"].(string)
+
+❗ Trap: Numbers become float64 by default
+
+
+🔄 Nested JSON Handling
+type Address struct {
+    City string
+}
+
+type User struct {
+    Name    string
+    Address Address
+}
+
+🔗 JSON
+{
+  "Name": "Ankur",
+  "Address": {
+    "City": "Mumbai"
+  }
+}
+
+
+🔄 Encoder & Decoder
+❓ Why Use Them?
+➤ Handle large data
+➤ Work with io.Reader / io.Writer
+➤ Avoid loading full JSON in memory
+
+
+1️⃣ Encoder (Write JSON)
+json.NewEncoder(w io.Writer).Encode(v)
+✅ Example
+json.NewEncoder(os.Stdout).Encode(u)
+
+
+2️⃣ Decoder (Read JSON)
+json.NewDecoder(r io.Reader).Decode(&v)
+✅ Example
+json.NewDecoder(os.Stdin).Decode(&u)
+
+
+🔥 Key Difference
+| Method  | Use Case               |
+| ------- | ---------------------- |
+| Marshal | Small data             |
+| Encoder | Large / streaming data |
+
+
+🔄 Custom JSON Marshal/Unmarshal
+👉 Implement Interfaces
+type Marshaler interface {
+    MarshalJSON() ([]byte, error)
+}
+
+type Unmarshaler interface {
+    UnmarshalJSON([]byte) error
+}
+
+✅ Example
+func (u User) MarshalJSON() ([]byte, error) {
+    return json.Marshal(struct {
+        Name string
+    }{
+        Name: "Mr. " + u.Name,
+    })
+}
+
+
+🔄 Common Errors & Edge Cases
+❌ Unexported fields ignored
+type User struct {
+    name string // ❌ not included
+}
+
+❌ Type mismatch
+{"age": "twenty"}
+→ error if struct expects int
+
+❌ Missing fields
+No error, default zero value used
+
+
+🔄 Internal Working
+1️⃣ Reflection-Based
+➤  Go uses reflection to inspect struct fields
+➤  Slower than manual parsing but flexible
+
+2️⃣  Memory Behavior
+➤  Marshal → allocates new byte slice
+➤  Decoder → streams → memory efficient
+
+
+🔄 Performance Tips
+1️⃣ Use Encoder/Decoder for large data
+2️⃣ Avoid map[string]interface{}: Expensive + unsafe
+3️⃣ Use struct whenever possible
+4️⃣ Reuse buffers if needed
+
+
+🔄 Best Practices
+➤ Always use struct tags
+➤ Validate JSON after unmarshalling
+➤ Handle errors properly
+➤ Prefer streaming for APIs
+
+
+🔄 Trap Questions (HIGH VALUE)
+❓ Difference between Marshal and Unmarshal?
+─────────▶ Marshal → struct ➝ JSON
+Unmarshal → JSON ➝ struct
+
+❓ Why exported fields only?
+─────────▶ Reflection can access only exported fields
+
+❓ Why pointer in Unmarshal?
+─────────▶ To modify original value
+
+❓ When to use Encoder/Decoder?
+─────────▶ Large data / streaming
+
+❓ What happens with unknown fields?
+─────────▶ Ignored by default
+
+
+✅ Real-World Example
+func handler(w http.ResponseWriter, r *http.Request) {
+    var u User
+    json.NewDecoder(r.Body).Decode(&u)
+
+    json.NewEncoder(w).Encode(u)
+}
+
+
+###########################
+🔷 Working with Time in Go
+###########################
+Time handling in Go is built around the time package, and it's extremely powerful + widely used in backend systems (APIs, logs, scheduling, DB timestamps).
+
+🔄 Core Type: time.Time
+👉 Represents a specific point in time
+t := time.Now()
+
+🔁 Key Properties
+➤ Stores:
+    ✔️ Date
+    ✔️ Time
+    ✔️ Timezone
+➤ Immutable (returns new values on modification)
+
+
+🔄 Getting Current Time
+t := time.Now()
+fmt.Println(t)
+✅ Output Example
+2026-04-20 21:30:00.123456 +0530 IST
+
+
+🔄 Creating Custom Time
+t := time.Date(2026, time.April, 20, 10, 30, 0, 0, time.UTC)
+✅ Parameters Order
+Year, Month, Day, Hour, Min, Sec, Nanosec, Location
+
+
+🔄 Time Formatting
+👉 Go uses a reference time: Mon Jan 2 15:04:05 MST 2006
+✅ Format Example
+t := time.Now()
+fmt.Println(t.Format("2006-01-02 15:04:05"))
+
+
+🔄 Common Formats
+"2006-01-02" → Date
+"15:04:05" → Time
+"02 Jan 2006" → Custom
+
+
+🔄 Trap
+➤ Not YYYY-MM-DD
+➤ Must use reference numbers
+
+
+🔄 Parsing Time (String ➝ Time)
+layout := "2006-01-02"
+t, _ := time.Parse(layout, "2026-04-20")
+⚡ Important: Layout must match input format exactly
+
+
+🔄 Time Arithmetic
+1️⃣ Add Time
+t := time.Now()
+t2 := t.Add(2 * time.Hour)
+
+2️⃣ Subtract Time
+diff := t2.Sub(t)
+🔥 Duration Output
+2h0m0s
+
+
+🔄 time.Duration
+👉 Represents elapsed time
+
+✅ Examples
+time.Second
+time.Minute
+time.Hour
+
+✅ Custom Duration
+d := 5 * time.Minute
+
+🔥 Convert Duration
+d.Hours()
+d.Minutes()
+d.Seconds()
+
+
+🔄 Sleeping (Delays)
+time.Sleep(2 * time.Second)
+
+🔄 Time Comparison
+t1.Before(t2)
+t1.After(t2)
+t1.Equal(t2)
+
+
+🔄 Time Zones
+1️⃣ Load Location
+loc, _ := time.LoadLocation("Asia/Kolkata")
+t := time.Now().In(loc)
+
+2️⃣ UTC
+t := time.Now().UTC()
+
+⚡ Interview Insight
+➤ Always store time in UTC
+➤ Convert to local when displaying
+
+
+🔄 Unix Timestamps
+1️⃣ Get Timestamp
+t := time.Now()
+fmt.Println(t.Unix())      // seconds
+fmt.Println(t.UnixMilli()) // milliseconds
+
+2️⃣ From Timestamp
+t := time.Unix(1713619200, 0)
+
+
+🔄 Timers & Tickers
+1️⃣ Timer (Run once)
+time.After(2 * time.Second)
+2️⃣ Ticker (Repeat)
+ticker := time.NewTicker(1 * time.Second)
+
+for range ticker.C {
+    fmt.Println("Tick")
+}
+👉 Use Cases
+    ✔️ Cron jobs
+    ✔️ Background tasks
+    ✔️ Polling systems
+
+
+🔄 Measuring Execution Time
+1️⃣ Benchmark Style
+start := time.Now()
+
+// some work
+elapsed := time.Since(start)
+fmt.Println(elapsed)
+
+
+🔄 Common Mistakes
+❌ Wrong Format String
+"YYYY-MM-DD" // ❌ WRONG
+
+❌ Ignoring Timezone
+Leads to bugs in production
+
+❌ Using Local Time in DB
+Always use UTC
+
+❌ Not Handling Parse Errors
+
+
+🔄 Internal Working
+1️⃣ Monotonic Clock
+➤ Go uses monotonic clock internally
+➤ Prevents issues with:
+➤ System clock changes
+➤ NTP sync
+
+2️⃣ Immutable Design
+t2 := t.Add(...)
+Original t is unchanged
+
+
+🔄 Best Practices
+➤ Store time in UTC
+➤ Use time.RFC3339 for APIs
+➤ t.Format(time.RFC3339)
+➤ Use time.Since() for measurement
+➤ Avoid manual string parsing
+
+
+🔄 Trap Questions
+❓ Why does Go use weird format (2006)?
+─────────▶ Reference-based formatting design
+
+❓ Difference between time.Sleep and time.After?
+─────────▶ Sleep → blocks
+After → channel-based (non-blocking patterns)
+
+❓ What is time.Duration?
+─────────▶ Represents elapsed time in nanoseconds
+
+❓ Why store time in UTC?
+─────────▶ Avoid timezone inconsistencies
+
+❓ How to measure execution time?
+─────────▶ time.Now() + time.Since()
+
+
+🌊 Real-World Example
+type User struct {
+    CreatedAt time.Time `json:"created_at"`
+}
+
+u := User{
+    CreatedAt: time.Now().UTC(),
+}
