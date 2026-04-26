@@ -1,0 +1,215 @@
+########################################
+🔷 HTTP Requests with HTTP Client in Go
+########################################
+Go’s HTTP client is in the net/http package.
+
+🔄 Key Types
+➤ http.Client → main client
+➤ http.Request → request object
+➤ http.Response → response object
+
+
+🔄 Simple GET Request
+package main
+
+import (
+    "fmt"
+    "io"
+    "net/http"
+)
+
+func main() {
+    resp, err := http.Get("https://api.example.com/data")
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+
+    body, _ := io.ReadAll(resp.Body)
+    fmt.Println(string(body))
+}
+
+⚡ Note and Tips
+1️⃣ Always close response body
+2️⃣ Body is an io.Reader
+
+
+🔄 Using http.Client (Recommended)
+✅ Why Not http.Get()?
+No timeout control ❌
+No customization ❌
+
+✅ Proper Way
+client := &http.Client{
+    Timeout: 5 * time.Second,
+}
+resp, err := client.Get("https://api.example.com")
+👉 Always use custom client with timeout
+
+
+🔄 Creating Custom Requests
+✅ POST Request
+payload := strings.NewReader(`{"name":"ankur"}`)
+
+req, _ := http.NewRequest("POST", "https://api.example.com", payload)
+req.Header.Set("Content-Type", "application/json")
+
+client := &http.Client{}
+resp, err := client.Do(req)
+
+👉  Flow: Request → Client → Server → Response
+
+
+🔄 Reading Response
+defer resp.Body.Close()
+
+body, _ := io.ReadAll(resp.Body)
+fmt.Println(string(body))
+
+⚠️ Important
+Always call: defer resp.Body.Close()
+
+
+🔄 Handling Status Codes
+if resp.StatusCode != http.StatusOK {
+    fmt.Println("Request failed")
+}
+
+✔️ Common Codes
+➤ 200 → OK
+➤ 201 → Created
+➤ 400 → Bad Request
+➤ 500 → Server Error
+
+
+🔄 JSON Handling with HTTP
+1️⃣ Decode JSON Response
+var data map[string]interface{}
+json.NewDecoder(resp.Body).Decode(&data)
+
+2️⃣ Better Approach (Struct)
+type User struct {
+    Name string `json:"name"`
+}
+
+var u User
+json.NewDecoder(resp.Body).Decode(&u)
+
+
+🔄 Sending JSON in Request
+data := map[string]string{"name": "ankur"}
+jsonData, _ := json.Marshal(data)
+
+req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+req.Header.Set("Content-Type", "application/json")
+
+
+🔄 Custom Transport
+❓ What is Transport?
+➤ Handles low-level network stuff
+➤ Connection pooling
+➤ TLS settings
+
+✅ Example
+client := &http.Client{
+    Transport: &http.Transport{
+        MaxIdleConns:    10,
+        IdleConnTimeout: 30 * time.Second,
+    },
+}
+
+🔁 Why Important?
+➤ Improves performance
+➤ Reuses connections
+
+
+🔄 Timeout Handling
+❌ Bad (default client)
+Can hang forever
+
+✅ Good
+client := &http.Client{
+    Timeout: 10 * time.Second,
+}
+
+
+🔄 Context-Based Requests
+✅ Example
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+defer cancel()
+
+req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+resp, err := client.Do(req)
+
+❓  Why Use Context?
+➤ Cancellation
+➤ Timeout control
+➤ Microservices communication
+
+
+🔄 Connection Reuse
+✅ Go automatically:
+    ✔️ Reuses TCP connections
+    ✔️ Uses keep-alive
+👉 BUT only if: resp.Body.Close()
+
+
+🔄 Common Mistakes
+❌ Not closing body ─────────▶ Causes memory leaks
+❌ No timeout ─────────▶ Production disaster
+❌ Ignoring errors
+❌ Using default client everywhere ─────────▶ No control
+
+
+🔄 Best Practices
+➤ Use single reusable client
+➤ Set timeout
+➤ Use context
+➤ Use struct for JSON
+➤ Handle status codes properly
+
+
+🔄 Interview Questions
+❓ Why not use http.Get()?
+─────────▶ No timeout, no flexibility
+
+❓ Why close response body?
+─────────▶ Prevent resource leaks
+
+❓ What is Transport?
+─────────▶ Handles connection pooling, low-level networking
+
+❓ How to handle timeouts?
+─────────▶ http.Client.Timeout or context
+
+❓ How does Go reuse connections?
+─────────▶ Via keep-alive (Transport)
+
+
+🔄 Internal Working
+👉 Under the Hood Uses:
+    ✔️ TCP sockets
+    ✔️ Connection pooling
+    ✔️ Goroutines for concurrency
+✅ Flow: Client → Transport → TCP → Server
+
+
+✅ Real-World Example
+client := &http.Client{
+    Timeout: 5 * time.Second,
+}
+
+req, _ := http.NewRequest("GET", url, nil)
+
+resp, err := client.Do(req)
+if err != nil {
+    return err
+}
+defer resp.Body.Close()
+
+if resp.StatusCode != http.StatusOK {
+    return fmt.Errorf("failed: %d", resp.StatusCode)
+}
+
+var result MyStruct
+json.NewDecoder(resp.Body).Decode(&result)
