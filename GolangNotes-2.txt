@@ -213,3 +213,422 @@ if resp.StatusCode != http.StatusOK {
 
 var result MyStruct
 json.NewDecoder(resp.Body).Decode(&result)
+
+
+#######################################
+🔷 Building an HTTP Server with GoLang
+#######################################
+🔄 Core Abstractions
+✅ http.Handler
+type Handler interface {
+    ServeHTTP(http.ResponseWriter, *http.Request)
+}
+👉 Any type implementing this can serve HTTP
+
+✅ http.HandlerFunc (Adapter)
+type HandlerFunc func(http.ResponseWriter, *http.Request)
+Lets you use functions as handlers
+
+
+🔄 Mental Model
+Incoming Request → Handler → ResponseWriter → Client
+
+
+🔄 Minimal Server
+func handler(w http.ResponseWriter, r *http.Request) {
+    w.Write([]byte("Hello World"))
+}
+
+func main() {
+    http.HandleFunc("/", handler)
+    http.ListenAndServe(":8080", nil)
+}
+
+❓ What Happens Internally
+➤ Opens TCP listener on :8080
+➤ Accepts connections
+➤ Spawns goroutine per request
+➤ Calls your handler
+
+
+🔄 Request Handling
+1️⃣ Access Key Data
+r.Method        // GET, POST
+r.URL.Path      // route
+r.URL.Query()   // query params
+r.Header        // headers
+r.Body          // request body (io.Reader)
+
+2️⃣ Read Body Safely
+defer r.Body.Close()
+body, err := io.ReadAll(r.Body)
+
+⚠️ Trap
+Body is a stream (io.Reader) → can be read only once
+
+
+🔄 Response Handling
+1️⃣ Write Response
+w.Write([]byte("response"))
+2️⃣ Set Headers
+w.Header().Set("Content-Type", "application/json")
+3️⃣ Set Status Code
+w.WriteHeader(http.StatusCreated)
+
+⚠️ Rule
+✔️ WriteHeader() must be called before Write()
+✔️ If not → defaults to 200 OK
+
+
+🔄 JSON API
+type User struct {
+    Name string `json:"name"`
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+    var u User
+    json.NewDecoder(r.Body).Decode(&u)
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(u)
+}
+
+
+🔄 Routing (Default vs Advanced)
+✅ Default Router
+http.HandleFunc("/user", userHandler)
+
+❌ Limitations
+✔️ No path params (/user/{id})
+✔️ No grouping
+
+👉 Insight For production:
+✔️ Use gorilla/mux (legacy)
+✔️ Or frameworks like Gin / Echo
+
+
+🔄 Middleware
+Wrap handlers to inject behavior
+
+✅ Example: Logging Middleware
+func logging(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        fmt.Println("Request:", r.Method, r.URL.Path)
+        next.ServeHTTP(w, r)
+    })
+}
+
+✅ Usage
+http.Handle("/", logging(http.HandlerFunc(handler)))
+
+🔄 Real Use Cases
+✔️ Authentication
+✔️ Logging
+✔️ Rate limiting
+✔️ CORS
+
+
+🔄 Custom Server
+❌ Bad
+http.ListenAndServe(":8080", nil)
+
+✅ Good
+server := &http.Server{
+    Addr:         ":8080",
+    Handler:      nil,
+    ReadTimeout:  5 * time.Second,
+    WriteTimeout: 10 * time.Second,
+    IdleTimeout:  120 * time.Second,
+}
+server.ListenAndServe()
+
+
+❓ Why Important
+✔️ Prevents slow client attacks
+✔️ Controls resource usage
+
+
+🔄 Concurrency Model
+👉 Go Automatically: Spawns goroutine per request
+👉 You Must Handle:
+✔️ Shared state (use sync.Mutex)
+✔️ Race conditions
+
+✅ Example Problem
+var count int
+
+func handler(w http.ResponseWriter, r *http.Request) {
+    count++ // ❌ race condition
+}
+
+
+🔄 Graceful Shutdown
+❗Problem
+Abrupt shutdown kills active requests
+✅ Solution
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+defer cancel()
+server.Shutdown(ctx)
+
+❓ What It Does
+✔️ Stops accepting new requests
+✔️ Waits for existing ones to finish
+
+
+🔄 File Serving
+http.Handle("/static/",
+    http.StripPrefix("/static/",
+        http.FileServer(http.Dir("./public")),
+))
+
+
+
+🔄 Error Handling Pattern
+✅ Proper Way
+if err != nil {
+    http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+    return
+}
+
+
+🔄 Internal Working
+👉 Request Lifecycle
+TCP Accept → Parse HTTP → Create Request Object → Call Handler → Write Response → Reuse/Close Connection
+
+👉 Connection Reuse
+✔️ Uses keep-alive
+✔️ Managed by internal transport
+
+
+🔄 Common Mistakes
+❌ Not setting timeouts
+❌ Ignoring errors
+❌ Not closing request body
+❌ Writing headers after body
+❌ Shared state without locks
+
+
+🔄 Best Practices
+➤ Always use custom http.Server
+➤ Add middleware layer
+➤ Use structured logging
+➤ Validate input
+➤ Use context for cancellation
+
+
+🔄 Trap Questions
+❓ How does Go handle concurrency in HTTP server?
+─────────▶ Goroutine per request
+
+❓ What is middleware?
+─────────▶ Wrapper for handlers to add functionality
+
+❓ Why use custom server?
+─────────▶ Timeout + control
+
+❓ What happens if you don’t call WriteHeader?
+─────────▶ Defaults to 200 OK
+
+❓ How to safely share data across requests?
+─────────▶ Use mutex / sync primitives
+
+
+🔄 Production Architecture Insight
+👉 Flow: Router → Middleware → Handler → Service → DB
+
+
+###########################################
+🔷 Request Routing with ServeMux (Go 1.22)
+###########################################
+➤ Go 1.22 upgraded net/http’s default router (ServeMux) into a powerful pattern-based router.
+➤ ServeMux a route multiplexer allows you to match different request handlers to different URLs served by your servers.
+➤ Used List of Registers patterns with their respective handlers.
+
+
+🔄 Patterns is ServeMux
+➤ Patterns are the URL patterns that ServeMux will accept.
+➤ The General pattern is of form: '[METHOD][HOST]/[PATH]'
+✅ Example: GET http://localhost:8080/users
+
+❓ What Changed in Go 1.22?
+👉 Before (Old ServeMux)
+➤ Only exact or prefix match
+➤ No path params ❌
+➤ No method-based routing ❌
+
+👉 Now (Go 1.22+)
+➤ Method-aware routes
+➤ Path parameters ({id})
+➤ Wildcards (...)
+➤ Cleaner routing → less need for frameworks
+
+
+🔄 Creating a ServeMux
+mux := http.NewServeMux()
+
+
+🔄 Method-Based Routing
+mux.HandleFunc("GET /users", getUsersHandler)
+mux.HandleFunc("POST /users", createUserHandler)
+
+👉 Insight
+➤ Route includes HTTP method + path
+➤ Eliminates manual if r.Method == ...
+
+
+🔄 Path Parameters
+1️⃣ Define Route
+mux.HandleFunc("GET /users/{id}", getUserHandler)
+
+
+2️⃣ Access Parameter
+id := r.PathValue("id")
+🔥 Example
+func getUserHandler(w http.ResponseWriter, r *http.Request) {
+    id := r.PathValue("id")
+    fmt.Fprintf(w, "User ID: %s", id)
+}
+
+
+🔄 Wildcard Routing (...)
+➤ The wildcard matches only a single path segment till the next forward slash '/'.
+➤ If the wildcard ends with ellipses '...', it matches all remaining path segments.
+➤ A '...' wildcard is only allowed at the end of the URL.
+
+1️⃣ Match Remaining Path
+mux.HandleFunc("GET /files/{path...}", fileHandler)
+
+✅ Example
+Request: /files/a/b/c.txt
+path := r.PathValue("path")
+// "a/b/c.txt"
+
+
+🔄 Static vs Dynamic Matching Priority
+👉 Priority Rules
+1️⃣ Exact match
+2️⃣ Parameter match ({id})
+3️⃣ Wildcard (...)
+
+⚡ Trap
+mux.HandleFunc("/users/me", handler1)
+mux.HandleFunc("/users/{id}", handler2)
+👉 /users/me → goes to handler1 (exact match wins)
+
+
+🔄 Fallback (404 Handling)
+1️⃣ Default Behavior
+If no route matches → 404 Not Found
+
+2️⃣ Custom 404
+mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+    http.NotFound(w, r)
+})
+
+
+🔄 Mounting ServeMux to Server
+server := &http.Server{
+    Addr:    ":8080",
+    Handler: mux,
+}
+server.ListenAndServe()
+
+
+🔄 Middleware with ServeMux
+1️⃣ Wrap Entire Mux
+loggedMux := loggingMiddleware(mux)
+http.ListenAndServe(":8080", loggedMux)
+
+2️⃣ Wrap Specific Routes
+mux.Handle("GET /secure", authMiddleware(http.HandlerFunc(handler)))
+
+
+🔄 Real Example (Production Style)
+mux := http.NewServeMux()
+
+mux.HandleFunc("GET /users", func(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintln(w, "All users")
+})
+
+mux.HandleFunc("GET /users/{id}", func(w http.ResponseWriter, r *http.Request) {
+    id := r.PathValue("id")
+    fmt.Fprintf(w, "User: %s\n", id)
+})
+
+mux.HandleFunc("POST /users", func(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintln(w, "User created")
+})
+http.ListenAndServe(":8080", mux)
+
+
+🔄 Internal Working
+1️⃣ Matching Algorithm
+➤ Patterns are parsed into a routing tree
+➤ Matching is:
+    ✔️ Efficient
+    ✔️ Deterministic
+    ✔️ No regex overhead
+
+
+❓ Why This Matters
+➤ Faster than many third-party routers
+➤ Minimal allocations
+
+
+🔄 Limitations
+❌ No advanced features like:
+➤ Route groups
+➤ Middleware chaining built-in
+➤ Complex validation
+👉 For large apps → still use:
+    ✔️ Gin
+    ✔️ Echo
+
+
+🔄 Common Mistakes
+❌ Forgetting method in route
+"/users" // old style (still works but less precise)
+
+❌ Wrong param access
+r.URL.Query().Get("id") // ❌ WRONG for path params
+
+❌ Route conflicts
+Overlapping patterns without understanding priority
+
+
+🔄 Best Practices
+➤ Always use method-based routing
+➤ Prefer path params over query for resource IDs
+➤ Keep handlers small → move logic to services
+➤ Use middleware for cross-cutting concerns
+
+
+🔄 Trap Questions
+❓ What’s new in Go 1.22 ServeMux?
+Method-based routing + path params + wildcards
+
+❓ How to access path parameters?
+r.PathValue("id")
+
+❓ Priority order in routing?
+Exact > param > wildcard
+
+❓ Why use ServeMux instead of frameworks?
+Lightweight, fast, built-in
+
+❓ When NOT to use ServeMux?
+Complex routing (middlewares, grouping)
+
+
+🔄 Advanced Insight
+👉  Go’s Direction
+✔️ Moving toward minimal built-in frameworks
+✔️ Reduce dependency on external routers
+
+👉  Real Production Pattern
+✔️ ServeMux → Middleware → Handler → Service → DB
+
+
+#######################################
+🔷 Mastering GoLang's Context Package
+#######################################
