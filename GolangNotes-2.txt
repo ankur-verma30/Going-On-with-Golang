@@ -632,3 +632,483 @@ Complex routing (middlewares, grouping)
 #######################################
 🔷 Mastering GoLang's Context Package
 #######################################
+The context package is fundamental for production Go. It enables cancellation, timeouts, deadlines, and request-scoped data propagation across goroutines.
+
+➤ Conext allows you to signal that the operation can be cancelled.
+➤ You can associate a deadline with a context, specifying the maximum time for an operation to complete
+➤ Context can be used to carry arbitrary data along with the function calls.
+
+❓ Why context Exists
+In concurrent systems:
+➤ Requests may take too long
+➤ Clients may disconnect
+➤ Goroutines may leak
+
+👉 You need a way to:
+➤ Cancel work ❌
+➤ Set deadlines ⏱️
+➤ Pass request-scoped metadata
+👉 Solution: context.Context
+
+
+❓ What is context.Context?
+type Context interface {
+    Deadline() (deadline time.Time, ok bool)
+    Done() <-chan struct{}
+    Err() error
+    Value(key any) any
+}
+
+🔄 General Rules
+➤ Context creation should be done at the root of the execution call.
+➤ By convention context is the first parameter of a function.
+➤ Context should not be saved in variable for later use.
+➤ Context should not be mutated.
+
+
+🔄 Responsibilities
+➤ Cancellation signal
+➤ Timeout/deadline
+➤ Carry request-scoped values
+
+
+🔄 Uses
+➤ HTTP Request context can carry values through middlewares and handlers.
+➤ Database operations can rely on context for cancellation.
+➤ Long running goroutines can be cancelled with context.
+
+
+🔄 Creating Contexts
+✅ Root Contexts
+ctx := context.Background()
+ctx := context.TODO()
+
+🔁 Difference
+➤ Background() → production root
+➤ TODO() → placeholder (during development)
+
+
+🔄 Cancellation
+1️⃣ Create Cancelable Context
+ctx, cancel := context.WithCancel(context.Background())
+defer cancel()
+
+2️⃣ Listen for Cancellation
+select {
+case <-ctx.Done():
+    fmt.Println("Cancelled:", ctx.Err())
+}
+
+🔄 Use Case
+➤ Stop goroutines when request ends
+
+
+🔄 Timeout & Deadline
+1️⃣ Timeout
+ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+defer cancel()
+
+2️⃣ Deadline
+ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
+
+🔥 Difference
+| Type     | Meaning       |
+| -------- | ------------- |
+| Timeout  | Relative time |
+| Deadline | Absolute time |
+
+
+🔄 Context in HTTP
+1️⃣ Request Context
+func handler(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+}
+
+👉 Key Insight
+➤ Automatically cancelled when:
+    ✔️ Client disconnects
+    ✔️ Request times out
+
+
+✅ Example: Long Task
+func handler(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+
+    select {
+    case <-time.After(5 * time.Second):
+        fmt.Fprintln(w, "Done")
+    case <-ctx.Done():
+        fmt.Println("Request cancelled:", ctx.Err())
+    }
+}
+
+
+🔄 Passing Context
+✅ Rule
+👉 Always pass context as first parameter
+func process(ctx context.Context)
+
+❌ Wrong
+func process(ctx context.Context, ...)
+👉 (Actually correct but must be first param; wrong is placing it later)
+
+✅ Example
+func fetchData(ctx context.Context) error {
+    select {
+    case <-time.After(3 * time.Second):
+        return nil
+    case <-ctx.Done():
+        return ctx.Err()
+    }
+}
+
+
+🔄 Context Values
+✅ Store Value
+ctx := context.WithValue(context.Background(), "userID", 123)
+✅ Retrieve
+id := ctx.Value("userID")
+
+🔄 Best Practice
+➤ Use only for:
+    ✔️ Request metadata
+    ✔️ Auth info
+➤ NOT for:
+    ✔️ Business logic data ❌
+👉 Trap: Keys should be custom types, not strings
+
+
+🔄 Context Tree
+1️⃣ Parent → Child
+parent := context.Background()
+child, cancel := context.WithCancel(parent)
+
+2️⃣ Behavior
+➤ Cancelling parent → cancels child
+➤ Child does NOT affect parent
+
+
+🔄 Common Patterns
+✅ Worker with Context
+func worker(ctx context.Context) {
+    for {
+        select {
+        case <-ctx.Done():
+            fmt.Println("Stopping worker")
+            return
+        default:
+            fmt.Println("Working...")
+            time.Sleep(1 * time.Second)
+        }
+    }
+}
+
+
+🔄 Common Mistakes
+❌ Not calling cancel() ─────────▶ Leads to memory leaks
+❌ Passing nil context
+func f(ctx context.Context) {
+    // ctx == nil ❌
+}
+❌ Using context for optional params
+❌ Ignoring ctx.Done()
+
+
+🔄 Best Practices
+➤ Always pass context explicitly
+➤ Always call cancel()
+➤ Use timeouts for external calls
+➤ Never store large data in context
+
+
+🔄 Internal Working
+👉 Implementation
+Uses:
+    ✔️ Channels (Done())
+    ✔️ Immutable chaining
+    ✔️ Tree structure
+
+
+🔄 Cancellation Mechanism
+➤ Closing channel → broadcast signal
+➤ All listeners stop immediately
+
+
+🔄 Questions
+❓ Why context is needed?
+─────────▶ To manage cancellation & timeouts in concurrent systems
+
+
+❓ Difference between WithCancel, WithTimeout, WithDeadline?
+─────────▶ ✔️ Cancel → manual
+    ✔️ Timeout → relative
+    ✔️ Deadline → absolute
+
+
+❓ Why pass context as first parameter?
+─────────▶ Convention + readability
+
+
+❓ Can context be stored in struct?
+─────────▶ ❌ No (anti-pattern)
+
+
+❓ What happens if you don’t call cancel()?
+─────────▶ Resource leaks
+
+
+✅ Real-World Example
+func handler(w http.ResponseWriter, r *http.Request) {
+    ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+    defer cancel()
+
+    err := dbQuery(ctx)
+    if err != nil {
+        http.Error(w, err.Error(), 500)
+        return
+    }
+}
+
+
+🔄 Advanced Insight
+👉 Context + Microservices
+Used for:
+    ✔️ Distributed tracing
+    ✔️ Request deadlines propagation
+    ✔️ Cancellation across services
+
+👉 Example Flow
+Client → API → Service → DB
+           ↓
+        Context flows everywhere
+
+
+###############################
+🔷 Effective Testing in GoLang
+###############################
+🔄 Testing Basics (testing package)
+👉 Test File Naming: Must end with _test.go
+👉 Test Function Signature: func TestXxx(t *testing.T)
+
+
+✅ Example
+package mathutils
+
+import "testing"
+
+func Add(a, b int) int {
+    return a + b
+}
+
+func TestAdd(t *testing.T) {
+    result := Add(2, 3)
+    if result != 5 {
+        t.Errorf("expected 5, got %d", result)
+    }
+}
+
+🔗 Run Tests
+go test ./...
+
+
+🔄 Table-Driven Tests
+👉 Go’s most preferred testing pattern
+
+✅ Example
+func TestAdd(t *testing.T) {
+    tests := []struct {
+        name     string
+        a, b     int
+        expected int
+    }{
+        {"positive", 2, 3, 5},
+        {"zero", 0, 5, 5},
+        {"negative", -1, -1, -2},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result := Add(tt.a, tt.b)
+            if result != tt.expected {
+                t.Errorf("expected %d, got %d", tt.expected, result)
+            }
+        })
+    }
+}
+
+❓ Why Important
+➤ Clean
+➤ Scalable
+➤ Easy to extend
+
+
+🔄 Assertions (Without External Libs)
+✅ Built-in
+if got != want {
+    t.Fatalf("got %v, want %v", got, want)
+}
+
+⚠️ Difference
+👉 t.Errorf() → continue test
+👉 t.Fatalf() → stop test immediately
+
+
+🔄 Subtests (t.Run)
+✅ Example
+t.Run("case1", func(t *testing.T) {})
+
+🔄 Benefits
+➤ Better reporting
+➤ Isolated execution
+
+
+🔄 Benchmarking (Performance Testing)
+✅ Benchmark Function
+func BenchmarkAdd(b *testing.B) {
+    for i := 0; i < b.N; i++ {
+        Add(2, 3)
+    }
+}
+
+🔗 Run: go test -bench=.
+⚡ Insight: b.N auto-adjusts for accurate timing
+
+
+🔄 Test Coverage
+✅ Run Coverage
+🔗 go test -cover
+
+✅ Detailed Report
+➤ go test -coverprofile=coverage.out
+➤ go tool cover -html=coverage.out
+⚡ Insight: 100% coverage ≠ bug-free code
+
+
+🔄 Testing HTTP Handlers
+✅ Use httptest
+package main
+
+import (
+    "net/http"
+    "net/http/httptest"
+    "testing"
+)
+
+func handler(w http.ResponseWriter, r *http.Request) {
+    w.Write([]byte("ok"))
+}
+
+func TestHandler(t *testing.T) {
+    req := httptest.NewRequest("GET", "/", nil)
+    rr := httptest.NewRecorder()
+
+    handler(rr, req)
+
+    if rr.Code != http.StatusOK {
+        t.Errorf("expected 200, got %d", rr.Code)
+    }
+}
+
+🔄 Key Tools
+➤ httptest.NewRequest
+➤ httptest.NewRecorder
+
+
+🔄 Mocking
+👉 Approach in Go
+1️⃣ Use interfaces
+2️⃣ Inject dependencies
+
+✅ Example
+type UserService interface {
+    GetUser(id string) string
+}
+
+type MockService struct{}
+
+func (m MockService) GetUser(id string) string {
+    return "mock_user"
+}
+
+❓ Why
+➤ Decouple external systems (DB, APIs)
+
+
+🔄 Testing with Context
+✅ Example
+ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+defer cancel()
+
+👉 Use to test:
+    ✔️ Timeouts
+    ✔️ Cancellation
+
+
+🔄 Parallel Tests
+✅ Enable Parallel Execution
+func TestSomething(t *testing.T) {
+    t.Parallel()
+}
+👉 Warning: Avoid shared state
+
+🔄 Test Setup & Teardown
+✅ Using TestMain
+func TestMain(m *testing.M) {
+    setup()
+    code := m.Run()
+    teardown()
+    os.Exit(code)
+}
+
+
+🔄 Common Mistakes
+❌ Not using table-driven tests
+❌ Ignoring edge cases
+❌ Testing implementation, not behavior
+❌ Using real DB/API in unit tests
+❌ No isolation between tests
+
+
+🔄 Best Practices
+➤ Write small, focused tests
+➤ Use interfaces for mocking
+➤ Prefer table-driven tests
+➤ Keep tests deterministic
+➤ Use httptest for APIs
+➤ Add benchmarks for critical paths
+
+
+🔄 Internal Working
+1️⃣ go test does:
+➤ Compiles test binary
+➤ Runs tests in isolation
+➤ Supports parallel execution
+
+2️⃣ Naming Convention
+➤ Only functions starting with Test, Benchmark, Example are executed
+
+
+🔄 Trap Questions
+❓ What is table-driven testing?
+─────────▶ Testing multiple cases using struct slice
+
+❓ How to test HTTP handlers?
+─────────▶ Use httptest
+
+❓ How to mock dependencies?
+─────────▶ Use interfaces
+
+❓ Difference between Errorf and Fatalf?
+─────────▶ Errorf continues, Fatalf stops
+
+❓ How to run benchmarks?
+─────────▶ go test -bench=.
+
+
+🔄 Real-World Testing Strategy
+👉 Pyramid: Unit Tests → Integration Tests → E2E Tests
+
+🔁 In Go Projects
+➤ Unit → functions, services
+➤ Integration → DB, APIs
+➤ E2E → full system
