@@ -1053,6 +1053,15 @@ func TestSomething(t *testing.T) {
 
 🔄 Test Setup & Teardown
 ✅ Using TestMain
+➤ TestMain is a special function that runs once before all tests are run for the test package.
+➤ If TestMain is present, it becomes the entry point for test execution.
+➤ Shared setup and teardown code can be written in TestMain:
+    ✔️ Creating temporary directories
+    ✔️ Cleaning up test resources.
+
+➤ Function TestMain recieves pointer to testing.M that provides method(Run) to run tests within package.
+➤ To run all tests, you need to call Run method which returns exit code that is then used to called os.Exit.
+
 func TestMain(m *testing.M) {
     setup()
     code := m.Run()
@@ -1060,6 +1069,9 @@ func TestMain(m *testing.M) {
     os.Exit(code)
 }
 
+🔄 Black Box testing & testdata
+➤ If tests use test data like input files, SQL scripts, etc. Then should be placed in testdata directory.
+➤ Test package can be name with suffix _test. Example: testing addition package you would use addition_test for blackbox testing
 
 🔄 Common Mistakes
 ❌ Not using table-driven tests
@@ -1112,3 +1124,252 @@ func TestMain(m *testing.M) {
 ➤ Unit → functions, services
 ➤ Integration → DB, APIs
 ➤ E2E → full system
+
+
+#####################################################################
+🔷 Concurrency in Go — Goroutines, Deadlocks, Livelocks & Starvation
+#####################################################################
+🔄 Concurrency vs Parallelism
+➤ Concurrency
+    ✔️ It is context dependent
+    ✔️ structuring program to handle multiple tasks
+➤ Parallelism
+    ✔️ actually executing tasks simultaneously
+👉 Go supports both.
+
+
+🔄 Need of concurrency
+➤ If implemented correctly it can increase the performance of the program.
+➤ Concurrency is evolution to extract more performance from CPU.
+
+
+🔄 Challenges of concurrency
+➤ Concurrency comes with inherent challenges like race condition.
+➤ When two or more concurrent stream of a program try to access a shared resource.
+➤ It cause problems as computer programs need to be deterministic.
+
+
+🔄 Atomicity
+➤ Atomicity refers to an operation that is indivisible and irreducible.
+➤ Database transactions are one example of atomic operations.
+➤ By employing atomic operations, we can ensure that critical sections of code are executed as a single unit.
+
+
+🔄 Critical Sections
+➤ Accessing and modifying shared daa is done in critical sections.
+➤ Identify critical sections of our code is very important.
+
+
+🔄 Goroutines (Lightweight Threads)
+➤ Lightweight threads
+✅ Create Goroutine
+go func() {
+    fmt.Println("Hello from goroutine")
+}()
+
+
+🔁 Key Properties
+➤ Extremely lightweight (~2 KB stack)
+➤ Managed by Go runtime (not OS threads)
+➤ Scheduled using M:N scheduler
+👉 Internal Model: G (goroutine) → M (OS thread) via P (processor)
+
+
+🔄 Channels
+➤ It is act as a communication pipline.
+➤ Channels enables:
+    ✔️ Data exchange
+    ✔️ Combining outputs
+    ✔️ Timeouts and cancellations
+✅ Create Channel
+ch := make(chan int)
+✅ Send / Receive
+ch <- 10      // send
+val := <-ch   // receive
+
+
+👉 Blocking Nature
+➤ Send blocks until receiver is ready
+➤ Receive blocks until sender is ready
+
+
+🔄 Buffered Channels
+ch := make(chan int, 2)
+🔥 Behavior
+Allows limited async communication
+Blocks only when buffer is full/empty
+
+
+🔄 Select Statement (Concurrency Control)
+➤ Waiting for events
+➤ Selecting from multiple channels
+select {
+case msg := <-ch:
+    fmt.Println(msg)
+case <-time.After(time.Second):
+    fmt.Println("timeout")
+}
+
+🔁 Use Cases
+➤ Timeouts
+➤ Multiple channel listening
+➤ Non-blocking operations
+
+
+🔄 Synchronization Primitives
+1️⃣ Mutex
+var mu sync.Mutex
+
+mu.Lock()
+count++
+mu.Unlock()
+
+2️⃣ WaitGroup
+var wg sync.WaitGroup
+
+wg.Add(1)
+go func() {
+    defer wg.Done()
+}()
+
+wg.Wait()
+
+
+🔄 Deadlocks
+➤ Deadlock occurs when two or more goroutines are blocked waiting for each other.
+➤ Processes blocking each other for a resource.
+➤ All goroutines are blocked → program cannot proceed
+
+
+🔁 Coffman Conditions
+1️⃣ Mutual exclusion: At least one resource that can be held by only one process at a time.
+2️⃣ Hold and Wait: Process should be able to hold while waiting.
+3️⃣ No Preemption: Process holding resource cannot be forced to release it.
+4️⃣ Circular Wait: Chain of waiting processes.
+
+
+🔄 Limitations of Coffman Conditions
+1️⃣ Coffman conditions are necessary but not sufficient.
+2️⃣ Originally defined for systems with single instances of resources.
+
+
+🔄 Prevention from Deadlocks
+1️⃣ Acquire locks in the same order
+2️⃣ At least one of the Coffman conditions is not satisfied.
+3️⃣ Avoid circular waits
+
+
+✅ Example
+ch := make(chan int)
+ch <- 10 // no receiver → deadlock
+❌ Another Example
+ch := make(chan int)
+
+go func() {
+    <-ch
+}()
+
+// main exits before send → deadlock or panic
+🔥 Runtime Error
+fatal error: all goroutines are asleep - deadlock!
+
+
+🔄 Livelock
+➤ Similar to deadlocks but processes continuously change state.
+➤ Two processes continuous trying to acquire the same resource from each other but timing causes livelocks.
+➤ Stuck in loop of requesting and releasing resource.
+
+
+✅ Example
+➤ Two goroutines keep yielding to each other
+➤ Both trying to avoid conflict but stuck
+
+🔄 Real Scenario
+➤ Retry loops without progress
+➤ Continuous state switching
+
+✅ Fix
+➤ Acquire mutexes in specific order.
+
+
+🔄 Starvation
+➤ One process denied resource by another.
+➤ Lower priority process keep waiting for resource.
+➤ Starvation is not limited to concurrent programming.
+
+❌ Example
+➤ One goroutine holds lock too long
+➤ Others never get chance
+
+🧠 Causes
+➤ Unfair scheduling
+➤ Long critical sections
+
+✅ Fix
+➤ Using of aging of process waiting
+➤ Fair resource allocation algorithms.
+➤ Scheduling algorithms and priority queues.
+
+
+🔄 Race Conditions (Closely Related)
+❌ Example
+var count int
+
+go func() { count++ }()
+go func() { count++ }()
+
+👉 Problem: Undefined behavior
+
+✅ Fix
+mu.Lock()
+count++
+mu.Unlock()
+
+👉 Detect: go run -race main.go
+
+
+🔄 Common Mistakes
+❌ Goroutine leaks
+❌ Ignoring channel close
+❌ Overusing mutex
+❌ Blocking main goroutine
+❌ Infinite loops without exit
+
+
+🔄 Best Practices
+➤ Use channels for communication
+➤ Use mutex for shared state
+➤ Always handle cancellation
+➤ Avoid global shared variables
+➤ Keep goroutines short-lived
+
+
+🔄 Trap Questions
+❓ What is deadlock?
+─────────▶ All goroutines blocked
+
+❓ Difference between deadlock & livelock?
+─────────▶ Deadlock → stuck
+Livelock → active but no progress
+
+❓ What is starvation?
+─────────▶ Goroutine never gets CPU
+
+❓ How to detect race condition?
+─────────▶ -race flag
+
+❓ Goroutines vs threads?
+─────────▶ Lightweight, managed by Go runtime
+
+
+🔄 Real-World Scenario
+✅ Example: API Timeout
+ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+defer cancel()
+
+go fetchData(ctx)
+
+
+##########################
+🔷 Scheduler & Goroutines
+##########################
