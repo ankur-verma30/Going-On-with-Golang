@@ -1373,3 +1373,238 @@ go fetchData(ctx)
 ##########################
 🔷 Scheduler & Goroutines
 ##########################
+❓ Why Does Go Need a Scheduler?
+Imagine:
+go task1()
+go task2()
+go task3()
+➤ You created 3 goroutines.
+
+❓ Questions:
+Who runs them?
+Which runs first?
+On which thread?
+How does Go manage thousands of goroutines?
+✅ Answer: 👉 The Go Scheduler.
+
+
+➤ A goroutine is: A lightweight independently executing function managed by the Go runtime.
+✅ Example:
+go processOrder()
+This creates a new goroutine.
+
+✔️ A goroutine is NOT an OS thread.
+✔️ Many goroutines run on a small number of OS threads.
+
+
+🔄 Goroutines vs Threads
+| Feature        | Goroutine         | OS Thread           |
+| -------------- | ----------------- | ------------------- |
+| Creation Cost  | Very low          | Expensive           |
+| Stack Size     | ~2 KB initially   | Usually 1 MB+       |
+| Managed By     | Go Runtime        | OS                  |
+| Context Switch | Cheap             | Expensive           |
+| Scalability    | Millions possible | Thousands difficult |
+
+❓ Why are goroutines lightweight?
+✔️ Small initial stack
+✔️ Runtime scheduling
+✔️ Dynamic stack growth
+✔️ No OS thread creation per goroutine
+
+
+🔄 The GMP Model
+The Go Scheduler is based on:
+G = Goroutine
+M = Machine (OS Thread)
+P = Processor
+
+1️⃣ G (Goroutine) Represents: go work()
+👉 Contains:
+    ✔️ Stack
+    ✔️ Program Counter
+    ✔️ State
+    ✔️ Scheduling info
+
+2️⃣ M (Machine) Represents: Actual OS Thread
+➤ Used by OS to execute code.
+
+3️⃣ P (Processor) Represents: Logical processor.
+👉 Contains:
+    ✔️ Local run queue
+    ✔️ Scheduling state
+
+⚡ Key Rule: A goroutine cannot execute without: G + M + P. All three are required.
+
+
+🔄 Visualization
+Suppose:
+P1
+ ├── G1
+ ├── G2
+ ├── G3
+
+P2
+ ├── G4
+ ├── G5
+
+And:
+M1 attached to P1
+M2 attached to P2
+
+Execution:
+M1 executes G1, G2, G3
+M2 executes G4, G5
+
+
+❓ Why P Exists?
+➤ Without P: G ↔ M would require heavy synchronization.
+➤ P provides:
+    ✔️ Local run queue
+    ✔️ Efficient scheduling
+    ✔️ Reduced contention
+
+
+🔄 GOMAXPROCS
+Controls number of processors (P).
+
+✅ Example: runtime.GOMAXPROCS(4)
+Meaning: 4 logical processors
+➤ By default: runtime.NumCPU() processors.
+
+✅ Example: 8-core machine → Usually: GOMAXPROCS = 8
+
+
+🔄 Goroutine Lifecycle
+Step 1️⃣: Created
+go task()
+State: Runnable
+
+Step 2️⃣: Placed into run queue, Waiting for execution
+
+Step 3️⃣: Scheduler picks it
+State: Running
+
+Step 4️⃣: Blocks
+✅ Example: <-ch
+State: Waiting
+
+Step 5️⃣: Unblocked
+Back to: Runnable
+
+Step 6️⃣: Completed
+State: Dead
+
+
+🔄 Local Run Queue
+Each P has: Local Queue
+✅ Example:
+P1: G1 G2 G3 G4
+
+Scheduler prefers: Local Queue because it is faster.
+
+
+🔄 Global Run Queue
+If local queue is full: Global Queue is used.
+Scheduling Priority
+1️⃣ Local Queue
+2️⃣ Global Queue
+3️⃣ Work Stealing
+
+
+🔄 Work Stealing
+Suppose:
+P1 -> Empty
+P2 -> 100 Goroutines
+
+➤ Instead of staying idle: P1 steals work from P2
+➤ Benefit: Balances load automatically.
+
+
+🔄 Blocking System Calls
+✅ Example: file.Read() or network.Read() may block.
+
+❗ Problem: If thread blocks: M blocked then goroutines stop.
+✅ Solution: Scheduler detaches: P ← M and attaches: P ← New M So execution continues.
+➤ Huge Advantage: Prevents entire system from stopping.
+
+
+🔄 Preemptive Scheduling
+Before Go 1.14: Cooperative Scheduling
+A goroutine had to yield.
+
+❗ Problem: Infinite loops could block scheduler.
+✅ Example:
+for {
+}
+
+➤ Since Go 1.14
+➤ Go introduced: Asynchronous Preemption
+➤ Scheduler can interrupt long-running goroutines.
+➤ Benefit: Fair scheduling.
+
+
+🔄 Goroutine Stack Management
+1️⃣ OS Thread
+Typically: 1 MB Stack allocated immediately.
+
+2️⃣ Goroutine Starts with: ~2 KB
+Grows Automatically
+2 KB
+ ↓
+4 KB
+ ↓
+8 KB
+ ↓
+16 KB
+as needed.
+
+❓ Why Important?
+➤ Millions of goroutines become possible.
+
+
+🔄 Scheduler and Channels
+✅ Example: <-ch
+➤ If no data: G blocked -> Scheduler removes it from CPU.
+➤ When data arrives: G becomes runnable and gets rescheduled.
+
+
+🔄 Scheduler and Mutexes
+✅ Example: mu.Lock()
+If lock unavailable: G blocked -> Scheduler runs another goroutine.
+
+
+🔄 Common Mistakes
+❌ Thinking goroutine = thread
+Wrong. -> Many goroutines run on few threads.
+
+❌ Creating unlimited goroutines
+for {
+    go work()
+}
+➤ Can exhaust memory.
+
+❌ Ignoring goroutine leaks
+go func() {
+    <-ch
+}()
+➤ If channel never receives: Leaked goroutine
+
+
+🔄 Production Best Practices
+✅ Use Worker Pools
+Instead of: 100000 goroutines
+Use: 10–100 workers
+
+✅ Always Support Cancellation
+Use: context.Context
+
+✅ Monitor Goroutine Count
+Useful: runtime.NumGoroutine()
+
+✅ Detect Leaks Early
+Use:
+    ✔️ pprof
+    ✔️ tracing
+    ✔️ metrics
+
