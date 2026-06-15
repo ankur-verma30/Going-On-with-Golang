@@ -1608,3 +1608,291 @@ Use:
     ✔️ tracing
     ✔️ metrics
 
+
+#######################
+🔷 Go sync.WaitGroup
+#######################
+A WaitGroup is a synchronization primitive used to: Wait for a collection of goroutines to finish before proceeding. Think of it as a counter managed by the Go runtime.
+
+
+🔄 Problem WaitGroup Solves
+Consider:
+func main() {
+    go processOrder()
+
+    fmt.Println("Main finished")
+}
+
+✅ Output: Main finished
+➤ The program exits before the goroutine completes.
+
+❓ Why?
+Main goroutine exits
+↓
+Process terminates
+↓
+All goroutines die
+👉 We need a mechanism to tell main: "Wait until all goroutines complete." That's exactly what WaitGroup does.
+
+
+🔄 Internal Working
+➤ A WaitGroup internally maintains a counter.
+➤ Conceptually: Counter = 0
+    ✔️ When: wg.Add(1)
+➤ Counter becomes: Counter = 1
+    ✔️ When goroutine finishes: wg.Done()
+    ✔️ Equivalent to: wg.Add(-1)
+➤ Counter becomes: Counter = 0
+    ✔️ Then: wg.Wait() unblocks.
+
+
+🧠 Mental Model
+Imagine a project manager.
+Manager assigns 3 tasks
+Task 1
+Task 2
+Task 3
+Manager waits until: When all employees report completion
+Manager proceeds: WaitGroup = Manager
+
+
+🔄 Core API
+1️⃣ Add()
+wg.Add(n)
+Increases counter.
+
+✅ Example: wg.Add(5)
+Meaning: I expect 5 goroutines to finish.
+
+2️⃣ Done()
+wg.Done()
+Equivalent to: wg.Add(-1)
+Signals completion.
+
+3️⃣ Wait()
+wg.Wait()
+Blocks until: Counter == 0
+
+✅ Basic Example
+var wg sync.WaitGroup
+
+for i := 0; i < 3; i++ {
+    wg.Add(1)
+
+    go func(id int) {
+        defer wg.Done()
+
+        fmt.Println("Worker", id)
+    }(i)
+}
+
+wg.Wait()
+fmt.Println("All workers completed")
+
+🔁 Execution Flow
+Counter = 3
+
+Worker 0 finishes
+Counter = 2
+
+Worker 1 finishes
+Counter = 1
+
+Worker 2 finishes
+Counter = 0
+
+Wait() released
+
+
+🔄 Why defer wg.Done()?
+Production code:
+go func() {
+    defer wg.Done()
+
+    // business logic
+}()
+
+Suppose:
+go func() {
+    panic("error")
+    wg.Done()
+}()
+➤ Done() never executes.
+
+✔️ Counter remains: 1 forever
+✔️ Result: Deadlock
+✔️ Using defer guarantees execution.
+
+
+✅ Real-World Example #1 — Calling Multiple Microservices
+Suppose an e-commerce API needs:
+1️⃣ User Service
+2️⃣ Inventory Service
+3️⃣ Payment Service
+4️⃣ Recommendation Service
+
+Sequential:
+100ms
+100ms
+100ms
+100ms
+Total = 400ms
+
+Concurrent: wg.Add(4)
+go fetchUser()
+go fetchInventory()
+go fetchPayment()
+go fetchRecommendation()
+
+wg.Wait()
+
+Now: ~100ms total instead of: 400ms
+This is one of the most common production uses.
+
+
+🔄 WaitGroup and Go Scheduler
+Remember GMP:
+G = Goroutine
+M = OS Thread
+P = Processor
+
+➤ When: wg.Wait()
+➤ The goroutine is parked.
+
+Scheduler:
+➤ Main Goroutine → Waiting
+➤ Worker Goroutines → Running
+➤ No CPU is wasted.
+
+
+🔄 Common Production Mistakes
+1️⃣ Calling Add inside goroutine
+❌ Wrong
+go func() {
+    wg.Add(1)
+    defer wg.Done()
+}()
+
+❓ Why?
+Scheduler may execute: wg.Wait()
+before: wg.Add(1)
+Result: Race condition
+
+✅ Always: wg.Add(1)
+go func() {
+}()
+
+
+2️⃣ Missing Done()
+❌ Wrong
+go func() {
+    return
+}()
+Counter never decremented.
+Result: Wait forever
+
+
+3️⃣ Calling Done twice
+❌ Wrong
+wg.Done()
+wg.Done()
+Runtime panic: sync: negative WaitGroup counter
+
+
+🔄 WaitGroup Does NOT Handle Errors
+Many beginners think: wg.Wait() collects errors. It doesn't.
+
+✅ Example:
+go func() {
+    err := callAPI()
+}()
+
+❓ Where does error go?
+Nowhere.
+Production solution: Use: errgroup.Group
+from: golang.org/x/sync/errgroup
+
+
+🔄 WaitGroup vs errgroup
+1️⃣ WaitGroup: Synchronization only
+
+2️⃣ errgroup
+Synchronization
++
+Error propagation
++
+Context cancellation
+👉 In modern microservices: errgroup > WaitGroup for most API orchestration.
+
+
+🔄 WaitGroup vs Channel
+❓ Junior developers often ask: Why not use channels?
+
+1️⃣ WaitGroup
+Purpose: Wait for completion
+
+2️⃣Channel
+Purpose: Communicate data
+
+👉 Use:
+    ✔️ WaitGroup → synchronization
+    ✔️ Channel → communication
+
+
+🔄 Performance Characteristics
+WaitGroup is:
+    ✔️ Very lightweight
+    ✔️ Lock-free for common operations
+    ✔️ Optimized by runtime
+
+Complexity:
+Add()  -> O(1)
+Done() -> O(1)
+Wait() -> O(1)
+Suitable for: Thousands of goroutines
+
+
+🔄 Production Pattern
+Often combined with:
+    ✔️ context.Context
+    ✔️ sync.WaitGroup
+    ✔️ channels
+
+✅ Example:
+HTTP Request
+↓
+Spawn 5 goroutines
+↓
+WaitGroup waits
+↓
+Context handles timeout
+↓
+Channels collect results
+
+This pattern appears in:
+    ✔️ Aggregator APIs
+    ✔️ Search systems
+    ✔️ Recommendation engines
+    ✔️ Payment orchestration
+
+
+🔄 Trap Questions
+❓ Can WaitGroup be reused?
+─────────▶ Yes, After: wg.Wait() counter reaches zero. You can use it again.
+
+❓ Is WaitGroup thread-safe?
+─────────▶ Yes, Multiple goroutines can call: Done() simultaneously.
+
+❓ What happens if Add is called after Wait?
+─────────▶ Can cause race conditions and undefined behavior. Always call Add before starting goroutines.
+
+❓ Does WaitGroup prevent goroutine leaks?
+─────────▶ No, It only waits. Leaked goroutines can still exist.
+
+❓ Why is errgroup preferred in microservices?
+Because it provides:
+    ✔️ Error propagation
+    ✔️ Context cancellation
+    ✔️ Synchronization
+in one abstraction.
+
