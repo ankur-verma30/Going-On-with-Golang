@@ -1896,3 +1896,689 @@ Because it provides:
     ✔️ Synchronization
 in one abstraction.
 
+
+#######################
+🔷 Go Mutex & RWMutex
+#######################
+❓ Why Do We Need Mutexes?
+The Problem: Shared Memory
+Suppose two goroutines access the same variable.
+
+🔗 Go Code Block:
+var count int
+
+go func() {
+    count++
+}()
+
+go func() {
+    count++
+}()
+👉 Looks harmless.
+Expected: count = 2
+Actual:
+count = 1
+count = 2
+👉 Both are possible.
+
+
+🔄 Understanding the Race Condition
+Consider: count++
+This is NOT a single operation.
+
+Internally:
+Step 1: Read count
+Step 2: Add 1
+Step 3: Write count back
+
+Suppose: count = 0
+
+👉 Execution:
+Goroutine A reads 0
+Goroutine B reads 0
+
+A adds 1 → writes 1
+B adds 1 → writes 1
+
+Final value: 1
+instead of: 2
+This is called a: Race Condition
+
+
+🔄 Mutex
+Mutex means: Mutual Exclusion
+Meaning: Only one goroutine can enter a critical section at a time.
+
+✅ Real-World Illustration
+Imagine: ATM Machine
+One account: Balance = ₹10,000
+Two withdrawals happen simultaneously:
+
+Withdraw ₹5000
+Withdraw ₹7000
+
+❌ Without locking: Data corruption
+✔️ With locking: One transaction finishes first. Then next starts
+Correct balance maintained.
+
+
+🔄 Critical Section
+A critical section is: Code that accesses shared mutable state.
+
+✅ Example:
+Shared variable: count
+Critical section: count++
+
+
+🔄 sync.Mutex
+Structure: var mu sync.Mutex
+1️⃣ Lock: mu.Lock() Acquires lock.
+
+If another goroutine already holds it: Current goroutine blocks
+
+2️⃣ Unlock: mu.Unlock() Releases lock.
+
+✅ Basic Example
+var (
+    count int
+    mu    sync.Mutex
+)
+
+func increment() {
+    mu.Lock()
+    count++
+    mu.Unlock()
+}
+
+👉 Now: Only one goroutine updates count at a time
+
+
+🔄 Preferred Pattern
+Always: mu.Lock()
+defer mu.Unlock()
+
+✅ Example:
+func increment() {
+    mu.Lock()
+    defer mu.Unlock()
+
+    count++
+}
+
+❓ Why defer?
+Suppose:
+func increment() {
+    mu.Lock()
+
+    panic("something bad")
+
+    mu.Unlock()
+}
+👉 Unlock never executes.
+
+✅ Result: Permanent deadlock
+Using defer guarantees unlock.
+
+
+🔄 Internal Working of Mutex
+Internally Mutex has two modes.
+1️⃣ Fast Path
+➤ No contention.
+➤ Lock acquired immediately.
+➤ Very fast.
+
+2️⃣ Slow Path
+➤ Another goroutine owns lock.
+Goroutine parked
+Scheduler runs others
+
+⚡ Important: Waiting goroutine: Consumes almost no CPU Because scheduler parks it.
+
+
+✅ Real Production Example: In-Memory Cache
+Suppose:
+
+type Cache struct {
+    data map[string]string
+}
+
+Requests: 1000 requests/sec
+Access same map.
+
+❌ Without lock: cache.data["user"] = "ankur"
+Multiple writers: Race condition
+
+Possible crash:
+fatal error:
+concurrent map writes
+
+✔️ Protected:
+type Cache struct {
+    mu   sync.Mutex
+    data map[string]string
+}
+
+
+🔄 Mutex and Maps
+❓ Is Go map thread-safe?
+❌ No
+
+✅ Example:
+m := make(map[string]int)
+
+Concurrent writes: Panic
+
+❗Runtime error:
+fatal error:
+concurrent map writes
+✔️ Use: sync.Mutex or sync.RWMutex
+
+
+🔄 RWMutex
+RWMutex means: Read Write Mutex
+
+✅ Optimized for:
+Many readers
+Few writers
+
+❓ Why?
+With Mutex: 1 reader at a time
+Even reads block reads.
+
+✅ Example:
+100 readers
+0 writers
+
+Mutex: Reads happen one by one --> Slow.
+RWMutex: All readers proceed simultaneously --> Much faster.
+
+
+🔄 RWMutex Operations
+1️⃣ Read Lock: mu.RLock()
+Allows: Multiple readers
+
+2️⃣ Read Unlock: mu.RUnlock()
+
+3️⃣ Write Lock: mu.Lock()
+Exclusive access.
+
+4️⃣ Write Unlock: mu.Unlock()
+
+
+🔄 Reader Behavior
+Suppose:
+Reader A
+Reader B
+Reader C
+
+All: mu.RLock()
+Allowed simultaneously.
+
+Execution:
+A reading
+B reading
+C reading
+
+
+🔄 Writer Behavior
+Suppose: mu.Lock()
+Writer enters.
+
+Now:
+No readers allowed
+No writers allowed
+👉 Exclusive ownership.
+
+
+✅ Real-World Illustration
+Think of: Library
+Readers: Can read books together
+Writer: Updating book inventory
+
+During update: Nobody allowed
+That's RWMutex.
+
+
+🔄 When to Use Mutex vs RWMutex
+1️⃣ Use Mutex When
+➤ Frequent writes
+➤ Small critical sections
+➤ Simplicity preferred
+
+✅ Examples:
+✔️ Counters
+✔️ Queues
+✔️ Worker pools
+
+
+2️⃣ Use RWMutex When
+➤ Heavy reads
+➤ Rare writes
+
+✅ Examples:
+✔️ Configuration cache
+✔️ Session cache
+✔️ Product catalog cache
+
+
+🔄 Common Production Mistakes
+❌ Mistake 1️⃣: Forgetting Unlock
+mu.Lock()
+return
+👉 Deadlock.
+
+✅ Always:
+mu.Lock()
+defer mu.Unlock()
+
+
+❌ Mistake 2️⃣: Double Unlock
+mu.Unlock()
+mu.Unlock()
+👉 Runtime panic.
+
+
+❌ Mistake 3️⃣: Locking Too Much
+❗ Bad:
+mu.Lock()
+callDatabase()
+mu.Unlock()
+
+Database call: 200ms
+Everything blocked.
+
+✅ Better:
+mu.Lock()
+copyData()
+mu.Unlock()
+
+callDatabase()
+
+
+🔄 Lock Contention
+A huge production concern.
+
+Suppose:
+1000 goroutines
+1 mutex
+
+All waiting: Queue forms
+Throughput drops.
+
+🟢 Symptoms:
+✔️ High latency
+✔️ CPU spikes
+✔️ Slow API responses
+
+
+🔄 Detecting Race Conditions
+Go provides: go test -race
+or
+go run -race main.go
+👉 This is heavily used in production CI/CD.
+
+✅ Example:
+go test -race ./...
+
+
+🔄 Mutex vs Channels
+1️⃣ Mutex
+Protects: Shared Memory
+
+2️⃣ Channels
+Coordinate: Communication
+
+⚡ Rule: 
+Shared state → Mutex
+Data transfer → Channel
+
+
+🔄 Performance Considerations
+1️⃣ Mutex
+Best for: Short critical sections
+
+2️⃣ RWMutex
+Best for: Read-heavy workloads
+
+
+❌ Don't Assume RWMutex is Faster
+Many developers make this mistake.
+If workload is:
+50% reads
+50% writes
+👉 RWMutex may actually be slower.
+Measure with benchmarks.
+
+
+🔄 System Design Perspective
+In high-scale services:
+
+✅ Examples:
+➤ User cache
+➤ Product cache
+➤ Configuration store
+➤ Feature flags
+
+
+✔️ Pattern:
+API Request
+     ↓
+RWMutex Protected Cache
+     ↓
+Database
+
+Reads: 100,000/sec
+Writes: 100/sec
+RWMutex provides excellent performance.
+
+
+########################
+🔷 Go sync.Cond object 
+########################
+A sync.Cond (Condition Variable) is used when: Goroutines need to wait until a specific condition becomes true.
+
+Think of it as:
+Mutex = Protect shared state
+Cond = Notify waiting goroutines that state changed
+
+
+✅ Problem It Solves
+Suppose:
+Producer adds jobs
+Consumers process jobs
+
+Consumers should:
+Wait when queue is empty
+Wake up when new job arrives
+
+Without constantly checking:
+for {
+    if len(queue) > 0 {
+        break
+    }
+}
+
+This is called: Busy Waiting (Spin Waiting) and wastes CPU.
+
+✅ Solution: sync.Cond
+    ✔️ Consumers sleep.
+    ✔️ Producer wakes them up.
+
+
+✅ Real-World Analogy
+Imagine a restaurant.
+
+Waiter: Waiting for customers
+Customer Arrives: Restaurant bell rings
+Waiter Wakes Up: Starts serving
+
+The bell is: sync.Cond
+
+
+🔄  Internal Components
+A Cond contains:
+type Cond struct {
+    L Locker
+}
+The Locker
+
+Usually: var mu sync.Mutex
+cond := sync.NewCond(&mu)
+
+❓ Why?
+Because condition checks must be protected.
+Otherwise: Race conditions occur.
+
+
+🔄 Core API
+There are only 3 important methods.
+1️⃣ Wait()
+cond.Wait()
+Meaning: Sleep until notified
+
+2️⃣ Signal()
+cond.Signal()
+Meaning: Wake ONE waiting goroutine
+
+3️⃣ Broadcast()
+cond.Broadcast()
+Meaning: Wake ALL waiting goroutines
+
+
+🔄 How Wait() Actually Works
+Suppose:
+mu.Lock()
+
+for !condition {
+    cond.Wait()
+}
+
+mu.Unlock()
+
+When:
+cond.Wait() executes:
+
+Step 1️⃣: Release lock
+Unlock(mu)
+
+Step 2️⃣: Park goroutine
+Sleeping
+
+Step 3️⃣: Signal received
+Wake up
+
+Step 4️⃣: Re-acquire lock
+Lock(mu)
+
+Step 5️⃣: Continue execution
+
+
+⚡ Important
+Wait does:
+    ✔️ Unlock
+    ✔️ Sleep
+    ✔️ Relock
+automatically.
+
+
+❓ Why Wait Must Be Inside a Loop
+❌ Wrong:
+if !condition {
+    cond.Wait()
+}
+
+✅ Correct:
+for !condition {
+    cond.Wait()
+}
+
+❓ Why?
+Because wake-up does NOT guarantee: Condition became true
+Another goroutine may: Wake up first and Consume resource before you get CPU.
+
+Always:
+for !condition {
+    cond.Wait()
+}
+
+✅ Basic Example
+1️⃣ Shared State
+var (
+    ready bool
+    mu    sync.Mutex
+)
+cond := sync.NewCond(&mu)
+
+2️⃣ Worker
+go func() {
+    mu.Lock()
+
+    for !ready {
+        cond.Wait()
+    }
+
+    fmt.Println("Started")
+    mu.Unlock()
+}()
+
+3️⃣ Main
+mu.Lock()
+ready = true
+cond.Signal()
+mu.Unlock()
+
+🔄 Execution:
+Worker sleeping
+↓
+ready=true
+↓
+Signal()
+↓
+Worker wakes
+↓
+Continues
+
+
+🔄 Signal vs Broadcast
+1️⃣ Signal(): cond.Signal()
+Wakes: ONE goroutine
+
+✅ Example:
+10 workers waiting
+Signal: Only one wakes
+
+2️⃣ Broadcast()
+cond.Broadcast()
+Wakes: All waiting goroutines
+
+✅ Example:
+10 workers waiting
+Broadcast: All 10 wake
+
+
+🔄 Cond vs Channels
+1️⃣ Channels
+
+Good for: Passing data
+✅ Example:
+jobs <- order
+
+2️⃣ Cond
+Good for: Waiting on state changes
+
+✅ Example:
+Queue became non-empty
+Pool got free connection
+Cache finished loading
+
+⚡ Rule:
+Need to transfer data? → Channel
+Need to wait for condition? → Cond
+
+
+❓ Why Cond Exists If Channels Exist?
+Because some problems are awkward with channels.
+
+✅ Example:
+Wait until:
+queue size > 0
+
+OR
+cache initialized
+
+OR
+active connections < limit
+
+These are: State-based conditions not message passing.
+👉 Cond is more natural.
+
+
+🔄 Internal Runtime Working
+Internally Cond maintains: Wait Queue
+
+✅ Example:
+Worker1 waiting
+Worker2 waiting
+Worker3 waiting
+
+➤ Stored in: Linked waiting list inside runtime.
+➤ Signal: Wake one waiter
+➤ Broadcast: Wake all waiters
+➤ Scheduler then: Moves them to runnable queue
+
+
+🔄 Common Production Mistakes
+Mistake 1️⃣: Calling Wait without lock.
+❌ Wrong: cond.Wait()
+
+✅ Correct:
+mu.Lock()
+cond.Wait()
+mu.Unlock()
+
+
+Mistake 2️⃣: Using if instead of for.
+❌ Wrong:
+if !ready {
+    cond.Wait()
+}
+
+✅ Correct:
+for !ready {
+    cond.Wait()
+}
+
+
+Mistake 3️⃣: Forgetting to change state before Signal.
+❌ Wrong: 
+cond.Signal()
+ready = true
+
+✅ Correct:
+ready = true
+cond.Signal()
+
+
+🔄 Performance Characteristics
+1️⃣ Wait()
+Very cheap.
+Goroutine is: Parked by scheduler
+Consumes: Near-zero CPU
+
+
+2️⃣ Signal()
+Complexity: O(1)
+
+3️⃣ Broadcast()
+Complexity: O(N)
+because all waiters wake.
+
+
+🔄 Cond vs WaitGroup
+1️⃣ WaitGroup
+Purpose: Wait for goroutines to finish
+
+✅ Example: wg.Wait()
+
+2️⃣ Cond
+Purpose: Wait for state changes
+
+✅ Example: queue not empty
+
+
+🔄 System Design Perspective
+In high-throughput systems:
+
+✅ Examples:
+➤ Database connection pools
+➤ Worker queues
+➤ Task schedulers
+➤ Resource managers
+➤ Rate limiters
+➤ Distributed lock managers
+
+You'll often find:
+Mutex
++
+Cond
+working together.
